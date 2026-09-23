@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/payments")
 public class PaymentController {
@@ -33,6 +35,16 @@ public class PaymentController {
     @GetMapping("/{id}")
     public ResponseEntity<Payment> getPayment(@PathVariable String id) {
         return ResponseEntity.ok(paymentService.getPayment(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Payment>> getAllPayments() {
+        return ResponseEntity.ok(paymentService.getAllPayments());
+    }
+
+    @GetMapping("/passenger/{passengerId}")
+    public ResponseEntity<List<Payment>> getPaymentsByPassengerId(@PathVariable String passengerId) {
+        return ResponseEntity.ok(paymentService.getPaymentsByPassengerId(passengerId));
     }
 
     @PatchMapping("/{id}/status")

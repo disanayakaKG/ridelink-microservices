@@ -9,6 +9,7 @@ import com.ridelink.payment.service.PaymentService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class PaymentServiceImpl implements PaymentService {
@@ -31,6 +32,16 @@ public class PaymentServiceImpl implements PaymentService {
                 .build();
 
         return paymentRepository.save(payment);
+    }
+
+    @Override
+    public List<Payment> getAllPayments() {
+        return paymentRepository.findAll();
+    }
+
+    @Override
+    public List<Payment> getPaymentsByPassengerId(String passengerId) {
+        return paymentRepository.findByPassengerId(passengerId);
     }
 
     @Override
