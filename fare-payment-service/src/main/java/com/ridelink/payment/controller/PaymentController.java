@@ -1,6 +1,8 @@
 package com.ridelink.payment.controller;
 
-import com.ridelink.payment.dto.*;
+import com.ridelink.payment.dto.PaymentRequest;
+import com.ridelink.payment.dto.PaymentReceiptResponse;
+import com.ridelink.payment.dto.PaymentStatusRequest;
 import com.ridelink.payment.model.Payment;
 import com.ridelink.payment.service.PaymentService;
 import jakarta.validation.Valid;
@@ -50,7 +52,7 @@ public class PaymentController {
     }
 
     @GetMapping("/{id}/receipt")
-    public PaymentReceipt getReceipt(@PathVariable String id) {
+    public PaymentReceiptResponse getReceipt(@PathVariable String id) {
         return service.getReceipt(id);
     }
 }

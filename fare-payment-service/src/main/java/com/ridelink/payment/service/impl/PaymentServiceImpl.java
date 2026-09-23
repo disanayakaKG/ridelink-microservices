@@ -1,7 +1,7 @@
 package com.ridelink.payment.service.impl;
 
 import com.ridelink.payment.dto.PaymentRequest;
-import com.ridelink.payment.dto.PaymentReceipt;
+import com.ridelink.payment.dto.PaymentReceiptResponse;
 import com.ridelink.payment.exception.PaymentNotFoundException;
 import com.ridelink.payment.model.Payment;
 import com.ridelink.payment.model.PaymentStatus;
@@ -60,10 +60,17 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public PaymentReceipt getReceipt(String id) {
+    public PaymentReceiptResponse getReceipt(String id) {
         Payment payment = getPaymentById(id);
-        return new PaymentReceipt(payment.getId(), payment.getTransactionReference(),
-                payment.getRideId(), payment.getPassengerId(), payment.getAmount(),
-                payment.getPaymentMethod(), payment.getStatus(), payment.getCreatedAt());
+        return PaymentReceiptResponse.builder()
+                .paymentId(payment.getId())
+                .transactionReference(payment.getTransactionReference())
+                .rideId(payment.getRideId())
+                .passengerId(payment.getPassengerId())
+                .amount(payment.getAmount())
+                .paymentMethod(payment.getPaymentMethod())
+                .status(payment.getStatus())
+                .createdAt(payment.getCreatedAt())
+                .build();
     }
 }
