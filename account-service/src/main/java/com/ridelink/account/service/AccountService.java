@@ -1,8 +1,11 @@
 package com.ridelink.account.service;
 
+import com.ridelink.account.dto.AccountResponse;
 import com.ridelink.account.dto.AuthResponse;
+import com.ridelink.account.dto.InternalAccountResponse;
 import com.ridelink.account.dto.LoginRequest;
 import com.ridelink.account.dto.RegisterRequest;
+import com.ridelink.account.dto.UpdateProfileRequest;
 import com.ridelink.account.exception.ApiException;
 import com.ridelink.account.model.User;
 import com.ridelink.account.repository.UserRepository;
@@ -44,13 +47,7 @@ public class AccountService {
         user.setUpdatedAt(now);
         users.save(user);
 
-        return new AuthResponse(
-                jwt.createToken(user),
-                user.getId(),
-                user.getEmail(),
-                user.getRole(),
-                user.getStatus()
-        );
+        return toAuth(user);
     }
 
     public AuthResponse login(LoginRequest req) {
@@ -63,7 +60,64 @@ public class AccountService {
         if (!"ACTIVE".equals(user.getStatus())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Account is " + user.getStatus());
         }
+        return toAuth(user);
+    }
 
+    public AccountResponse getById(String userId) {
+        return toAccount(find(userId));
+    }
+
+    public AccountResponse getMe(String userId) {
+        return getById(userId);
+    }
+
+    public AccountResponse updateMe(String userId, UpdateProfileRequest req) {
+        User user = find(userId);
+        if (req.getFullName() != null && !req.getFullName().isBlank()) {
+            user.setFullName(req.getFullName().trim());
+        }
+        if (req.getPhone() != null) {
+            user.setPhone(req.getPhone());
+        }
+        user.setUpdatedAt(Instant.now());
+        users.save(user);
+        return toAccount(user);
+    }
+
+    public AccountResponse getByIdForCaller(String callerId, String callerRole, String targetId) {
+        if (!targetId.equals(callerId) && !"ADMIN".equals(callerRole)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to view this account");
+        }
+        return getById(targetId);
+    }
+
+    public AccountResponse updateStatus(String callerRole, String targetId, String status) {
+        if (!"ADMIN".equals(callerRole)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Admin only");
+        }
+        User user = find(targetId);
+        user.setStatus(status);
+        user.setUpdatedAt(Instant.now());
+        users.save(user);
+        return toAccount(user);
+    }
+
+    public InternalAccountResponse getInternal(String userId) {
+        User user = find(userId);
+        return new InternalAccountResponse(
+                user.getId(),
+                user.getRole(),
+                user.getStatus(),
+                "ACTIVE".equals(user.getStatus())
+        );
+    }
+
+    private User find(String userId) {
+        return users.findById(userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Account not found"));
+    }
+
+    private AuthResponse toAuth(User user) {
         return new AuthResponse(
                 jwt.createToken(user),
                 user.getId(),
@@ -71,5 +125,18 @@ public class AccountService {
                 user.getRole(),
                 user.getStatus()
         );
+    }
+
+    private AccountResponse toAccount(User user) {
+        AccountResponse res = new AccountResponse();
+        res.setUserId(user.getId());
+        res.setEmail(user.getEmail());
+        res.setFullName(user.getFullName());
+        res.setPhone(user.getPhone());
+        res.setRole(user.getRole());
+        res.setStatus(user.getStatus());
+        res.setCreatedAt(user.getCreatedAt());
+        res.setUpdatedAt(user.getUpdatedAt());
+        return res;
     }
 }
