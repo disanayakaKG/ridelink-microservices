@@ -2,6 +2,8 @@ package com.ridelink.driver.service;
 
 import com.ridelink.driver.dto.DriverProfileRequest;
 import com.ridelink.driver.dto.LocationUpdateRequest;
+import com.ridelink.driver.exception.DriverNotFoundException;
+import com.ridelink.driver.exception.DuplicateDriverProfileException;
 import com.ridelink.driver.model.Driver;
 import com.ridelink.driver.model.DriverStatus;
 import com.ridelink.driver.repository.DriverRepository;
@@ -20,7 +22,7 @@ public class DriverService {
     public Driver registerProfile(DriverProfileRequest request) {
         driverRepository.findByAccountId(request.getAccountId())
                 .ifPresent(existing -> {
-                    throw new IllegalStateException("Driver profile already exists for this account");
+                    throw new DuplicateDriverProfileException("Driver profile already exists for this account");
                 });
 
         Driver driver = Driver.builder()
@@ -40,12 +42,12 @@ public class DriverService {
 
     public Driver getByAccountId(String accountId) {
         return driverRepository.findByAccountId(accountId)
-                .orElseThrow(() -> new IllegalArgumentException("No driver profile found for account " + accountId));
+                .orElseThrow(() -> new DriverNotFoundException("No driver profile found for account " + accountId));
     }
 
     public Driver getById(String id) {
         return driverRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Driver not found: " + id));
+                .orElseThrow(() -> new DriverNotFoundException("Driver not found: " + id));
     }
 
     public Driver updateAvailability(String driverId, DriverStatus newStatus) {
