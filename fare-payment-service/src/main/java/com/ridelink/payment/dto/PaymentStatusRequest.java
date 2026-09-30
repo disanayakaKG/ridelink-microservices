@@ -6,7 +6,6 @@ import lombok.Data;
 
 @Data
 public class PaymentStatusRequest {
-
     @NotNull
     private PaymentStatus status;
 }
