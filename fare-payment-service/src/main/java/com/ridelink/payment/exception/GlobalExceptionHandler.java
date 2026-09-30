@@ -14,6 +14,23 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(PaymentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentNotFound(PaymentNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(404).error("Not Found").message(ex.getMessage())
+                .details(List.of(ex.getMessage())).build());
+    }
+
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadableRequest(
+            org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        return ResponseEntity.badRequest().body(ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(400).error("Bad Request").message("Invalid request body")
+                .details(List.of("Provide a valid JSON body with valid field values")).build());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
         List<String> details = new ArrayList<>();
