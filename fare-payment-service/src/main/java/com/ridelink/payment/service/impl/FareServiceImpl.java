@@ -1,8 +1,9 @@
 package com.ridelink.payment.service.impl;
 
+import org.springframework.stereotype.Service;
+
 import com.ridelink.payment.dto.FareResponse;
 import com.ridelink.payment.service.FareService;
-import org.springframework.stereotype.Service;
 
 @Service
 public class FareServiceImpl implements FareService {
