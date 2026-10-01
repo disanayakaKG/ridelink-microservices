@@ -1,11 +1,11 @@
 spring.application.name=ride-service
 server.port=8083
 
-# MongoDB – use environment variable; never commit real credentials
-spring.mongodb.uri=mongodb+srv://ride_user:ride123@cluster0.zztok57.mongodb.net/?appName=Cluster0
+# MongoDB
+spring.mongodb.uri=${MONGODB_URI}
 spring.mongodb.database=ridelink_ride_db
 
-# Inter-service base URLs (overridable for integration)
+# Inter-service base URLs
 app.driver-service.base-url=${DRIVER_SERVICE_URL:http://localhost:8082}
 app.payment-service.base-url=${PAYMENT_SERVICE_URL:http://localhost:8084}
 
