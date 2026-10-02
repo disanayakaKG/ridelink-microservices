@@ -2,39 +2,43 @@ package com.ridelink.ride.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
+import jakarta.servlet.DispatcherType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
-/**
- * Permissive security configuration for local development and demonstration.
- * Authentication/authorization is expected to be enforced by the Account Service
- * (JWT) in the fully integrated system. Swagger and all /api/** endpoints are
- * open so the service can be exercised independently via Postman/Swagger.
- */
 @Configuration
-@EnableWebSecurity
 public class SecurityConfig {
 
-	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		http
-				.csrf(csrf -> csrf.disable())
-				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authorizeHttpRequests(auth -> auth
-						.requestMatchers(
-								"/swagger-ui/**",
-								"/swagger-ui.html",
-								"/v3/api-docs/**",
-								"/api-docs/**",
-								"/actuator/**",
-								"/error")
-						.permitAll()
-						.requestMatchers("/api/**").permitAll()
-						.anyRequest().authenticated())
-				.httpBasic(Customizer.withDefaults());
-		return http.build();
-	}
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
+
+        JwtGrantedAuthoritiesConverter authorities = new JwtGrantedAuthoritiesConverter();
+        authorities.setAuthoritiesClaimName("role");
+        authorities.setAuthorityPrefix("ROLE_");
+        JwtAuthenticationConverter authentication = new JwtAuthenticationConverter();
+        authentication.setJwtGrantedAuthoritiesConverter(authorities);
+
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                .requestCache(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**",
+                                "/api-docs/**", "/actuator/**", "/error").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .oauth2ResourceServer(resource -> resource.jwt(jwt ->
+                        jwt.jwtAuthenticationConverter(authentication)));
+
+        return http.build();
+    }
 }

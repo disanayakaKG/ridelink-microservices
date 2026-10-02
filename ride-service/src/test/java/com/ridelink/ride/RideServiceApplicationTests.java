@@ -11,7 +11,7 @@ import org.springframework.test.context.TestPropertySource;
 		"app.driver-service.base-url=http://localhost:8082",
 		"app.payment-service.base-url=http://localhost:8084"
 })
-class RideServiceApplicationTests {
+class RideServiceApplicationTests extends com.ridelink.ride.security.AccountJwtTestSupport {
 
 	@Test
 	void contextLoads() {
