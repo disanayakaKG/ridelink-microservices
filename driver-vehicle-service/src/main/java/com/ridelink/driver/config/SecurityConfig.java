@@ -1,8 +1,9 @@
-package com.ridelink.ride.config;
+package com.ridelink.driver.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import jakarta.servlet.DispatcherType;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -32,8 +33,11 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**",
-                                "/api-docs/**", "/actuator/**", "/error").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/drivers/available").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/drivers").hasAnyRole("DRIVER", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/drivers/**").hasAnyRole("DRIVER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/drivers/**").hasAnyRole("DRIVER", "ADMIN")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(resource -> resource.jwt(jwt ->

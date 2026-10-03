@@ -25,8 +25,8 @@ public class PaymentServiceClient {
 
 	private final RestClient restClient;
 
-	public PaymentServiceClient(@Value("${app.payment-service.base-url}") String baseUrl) {
-		this.restClient = RestClient.builder()
+	public PaymentServiceClient(@Value("${app.payment-service.base-url}") String baseUrl, RestClient.Builder builder) {
+		this.restClient = builder.clone()
 				.baseUrl(baseUrl)
 				.build();
 	}
