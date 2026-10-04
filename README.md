@@ -4,13 +4,64 @@ RideLink is a backend-only ride-sharing platform for the IT3130 Application Deve
 
 This README describes the checked-in implementation. Setup examples contain placeholders, never deployment credentials. Known implementation limitations are identified explicitly so that demonstrations and assessment match the code.
 
-## 1. Project overview
+## Contents
+
+- [Project Overview](#project-overview)
+- [Team Members and Service Ownership](#team-members-and-service-ownership)
+- [System Architecture](#system-architecture)
+- [Architecture Rationale](#architecture-rationale)
+- [Technology Stack](#technology-stack)
+- [Repository Structure](#repository-structure)
+- [Account Service](#account-service)
+- [Driver & Vehicle Service](#driver--vehicle-service)
+- [Ride Management Service](#ride-management-service)
+- [Fare & Payment Service](#fare--payment-service)
+- [Software Engineering Concepts and Best Practices](#software-engineering-concepts-and-best-practices)
+- [JWT Authentication and Authorization](#jwt-authentication-and-authorization)
+- [JWT Token Forwarding](#jwt-token-forwarding)
+- [Inter-Service Communication](#inter-service-communication)
+- [MongoDB Data Ownership](#mongodb-data-ownership)
+- [Environment Variables](#environment-variables)
+- [Prerequisites](#prerequisites)
+- [Clone and Setup](#clone-and-setup)
+- [Build and Test](#build-and-test)
+- [Run All Four Services](#run-all-four-services)
+- [Port Verification](#port-verification)
+- [Complete API Reference](#complete-api-reference)
+- [Swagger / OpenAPI](#swagger--openapi)
+- [Postman Setup](#postman-setup)
+- [End-to-End Workflow](#end-to-end-workflow)
+- [Negative Test Scenarios](#negative-test-scenarios)
+- [Testing Strategy](#testing-strategy)
+- [Error Handling and Validation](#error-handling-and-validation)
+- [Git Workflow](#git-workflow)
+- [GitHub Actions CI](#github-actions-ci)
+- [Security Best Practices](#security-best-practices)
+- [Known Limitations](#known-limitations)
+- [Troubleshooting](#troubleshooting)
+- [Final Verification Checklist](#final-verification-checklist)
+- [Release / Assessed Version](#release--assessed-version)
+- [Team Contribution Summary](#team-contribution-summary)
+- [Project Status](#project-status)
+
+## Project Overview
 
 The supported roles are `PASSENGER`, `DRIVER`, and `ADMIN`. A typical demonstration registers accounts, logs in to obtain an Account-issued JWT, creates a driver profile, marks the driver available, requests a fare estimate, creates and progresses a ride, creates a simulated payment, updates its status, and retrieves a JSON receipt.
 
 The project demonstrates REST service boundaries, separate MongoDB persistence, JWT authentication and selected role restrictions, synchronous inter-service calls, validation, exception handling, automated tests, and CI. There is no frontend, real payment gateway, live GPS provider, or route-distance calculation. Clients supply distance and location values.
 
-## 2. System architecture
+## Team Members and Service Ownership
+
+| Member | IT Number | Primary Service | Port |
+| --- | --- | --- | ---: |
+| Bandara D M R M | IT24102090 | Account Service | 8081 |
+| Gammapila J P | IT24101325 | Driver & Vehicle Service | 8082 |
+| Ranathunga M A D S | IT24102079 | Ride Management Service | 8083 |
+| Disanayaka K G G S | IT24102031 | Fare & Payment Service | 8084 |
+
+Each member is the primary owner of one service. The group is jointly responsible for architecture, API contracts, integration, JWT integration, testing, Postman, Swagger/OpenAPI, Git workflow, peer review, CI, documentation and the final demonstration. Ownership describes responsibility; it does not attribute unsupported individual commits or contributions.
+
+## System Architecture
 
 | Service | Folder | Default port | Responsibility | Configured database |
 | --- | --- | ---: | --- | --- |
@@ -38,7 +89,33 @@ flowchart LR
 
 The databases may share an Atlas cluster while remaining distinct persistence boundaries. Tokens are verified locally; Driver, Ride, and Payment do not call Account on every request.
 
-## 3. Repository structure
+## Architecture Rationale
+
+Four services follow clear business boundaries: identity, driver operations, rides and payments. This supports independent development by four owners, separate persistence and independent service testing. Separate processes also allow future scaling of a busy service without scaling every component; no measured scaling results are claimed.
+
+A monolith would require less configuration and simplify local debugging and transactions. RideLink's microservices introduce distributed debugging, inter-service failure handling, JWT/configuration consistency and integration complexity. Synchronous REST is straightforward for this prototype, but downstream failures require explicit handling and there is no distributed transaction. Microservices suit the team's chosen boundaries; they are not always preferable to a monolith.
+
+## Technology Stack
+
+| Technology | Repository evidence / version |
+| --- | --- |
+| Java | `java.version=17` in all four POMs; CI also uses 17 |
+| Spring Boot | Parent version `4.1.1` in all four POMs |
+| Maven | Wrapper `3.3.4`, configured Maven distribution `3.9.16` |
+| HTTP APIs | Spring Web MVC, JSON, synchronous Spring `RestClient` in Ride |
+| Persistence | Spring Data MongoDB; Atlas connection support; CI uses `mongo:7` |
+| Security | Spring Security; OAuth2 Resource Server with Nimbus JWT decoder in Driver/Ride/Payment |
+| JWT signing | JJWT `0.12.6` in Account; same version used only for token signing in other services' tests |
+| Passwords | BCrypt in Account |
+| Validation / boilerplate | Jakarta Bean Validation; Lombok in Driver/Ride/Payment |
+| OpenAPI | springdoc `2.8.6` in Account/Ride; `3.0.0` in Driver; `3.1.1` in Payment |
+| Tests | JUnit Jupiter, parameterized tests, Mockito, Spring Test/MockMvc, AssertJ; versions managed by the Boot parent |
+| Development / demonstration | Git, GitHub, Postman; VS Code or IntelliJ IDEA |
+| CI | GitHub Actions; `actions/checkout@v4`, `actions/setup-java@v4`, Temurin 17 |
+
+Do not infer installed local tool versions from these build declarations. Check your own JDK and wrapper before running.
+
+## Repository Structure
 
 ```text
 ridelink-microservices/
@@ -73,29 +150,9 @@ Each service contains:
 
 The Java package suffixes are `account`, `driver`, `ride`, and `payment`. The `docs/` subdirectories still contain `.gitkeep` placeholders; no screenshot evidence is included there. The `postman/` directory contains the supplied Postman Collection v2.1 and local environment exports. Service-specific documentation exists, but some historical configuration statements conflict with the final source; this README follows the source.
 
-## 4. Technology stack
+## Account Service
 
-| Technology | Repository evidence / version |
-| --- | --- |
-| Java | `java.version=17` in all four POMs; CI also uses 17 |
-| Spring Boot | Parent version `4.1.1` in all four POMs |
-| Maven | Wrapper `3.3.4`, configured Maven distribution `3.9.16` |
-| HTTP APIs | Spring Web MVC, JSON, synchronous Spring `RestClient` in Ride |
-| Persistence | Spring Data MongoDB; Atlas connection support; CI uses `mongo:7` |
-| Security | Spring Security; OAuth2 Resource Server with Nimbus JWT decoder in Driver/Ride/Payment |
-| JWT signing | JJWT `0.12.6` in Account; same version used only for token signing in other services' tests |
-| Passwords | BCrypt in Account |
-| Validation / boilerplate | Jakarta Bean Validation; Lombok in Driver/Ride/Payment |
-| OpenAPI | springdoc `2.8.6` in Account/Ride; `3.0.0` in Driver; `3.1.1` in Payment |
-| Tests | JUnit Jupiter, parameterized tests, Mockito, Spring Test/MockMvc, AssertJ; versions managed by the Boot parent |
-| Development / demonstration | Git, GitHub, Postman; VS Code or IntelliJ IDEA |
-| CI | GitHub Actions; `actions/checkout@v4`, `actions/setup-java@v4`, Temurin 17 |
-
-Do not infer installed local tool versions from these build declarations. Check your own JDK and wrapper before running.
-
-## 5. Microservice details
-
-### Account Service
+**Owner: Bandara D M R M - IT24102090.**
 
 - Port `8081`; database `ridelink_account_db`; package `com.ridelink.account`.
 - Packages: `config`, `controller`, `dto`, `exception`, `model`, `repository`, `security`, `service`.
@@ -105,7 +162,15 @@ Do not infer installed local tool versions from these build declarations. Check 
 - Public registration currently accepts all three roles, including `ADMIN`; there is no separate admin provisioning approval.
 - Status changes do not revoke already issued tokens. Other services do not consult account status when validating a JWT.
 
-### Driver & Vehicle Service
+**Validation and errors:** `RegisterRequest` uses `@NotBlank`, `@Email`, `@Size` and `@Pattern`; `LoginRequest` validates credentials; `UpdateStatusRequest` restricts status strings. `AuthController` and status updates use `@Valid`. Profile updates accept optional fields without Bean Validation. `GlobalExceptionHandler.handleApi()` preserves `ApiException` HTTP statuses; `handleValid()` returns the first field error as 400.
+
+**APIs and documentation:** `AuthController`, `AccountController` and `InternalAccountController` expose registration/login, own-profile GET/PUT, self/admin lookup, admin status PATCH and internal lookup. See the [complete API reference](#complete-api-reference). Public Swagger/OpenAPI paths are configured; verify runtime access separately.
+
+**Tests:** `AccountServiceTest` covers registration, hashing, duplicate email and login outcomes; `RegisterRequestValidationTest` covers DTO validation. `AccountServiceApplicationTests.applicationClassExists()` does not start a Spring context. Account uses a concrete `AccountService` rather than an interface/implementation pair.
+
+## Driver & Vehicle Service
+
+**Owner: Gammapila J P - IT24101325.**
 
 - Port `8082`; database `ridelink_driver_db`; package `com.ridelink.driver`.
 - Packages: `config`, `controller`, `dto`, `exception`, `model`, `repository`, `service`.
@@ -116,7 +181,15 @@ Do not infer installed local tool versions from these build declarations. Check 
 - Vehicle data is embedded in the driver document; there is no separate vehicle collection or controller.
 - The service does not call Account to validate the submitted `accountId`, bind that ID to the JWT subject, or enforce per-driver ownership.
 
-### Ride Management Service
+**Validation and errors:** `DriverProfileRequest` requires nonblank account, licence and vehicle fields; service area is optional. `LocationUpdateRequest` requires both coordinates without geographic bounds. `DriverController` uses `@Valid` for profile/location bodies; availability is a `DriverStatus` query parameter. `GlobalExceptionHandler` handles missing profiles (404), duplicates (409), validation/illegal arguments (400) and unexpected errors (500).
+
+**APIs and documentation:** `DriverController` supports profile creation, ID/account lookup, availability/location PATCH and available-driver GET. OpenAPI operation/response annotations describe these routes; see the [API reference](#complete-api-reference).
+
+**Tests:** `DriverServiceTest` covers profiles, duplication, lookup, availability, location and area filtering. `JwtContractTest`, `JwtSecurityTest` and `DriverVehicleServiceApplicationTests` cover token contracts, filters, role restrictions and context loading. `DriverService` is a concrete class with Lombok-generated constructor injection.
+
+## Ride Management Service
+
+**Owner: Ranathunga M A D S - IT24102079.**
 
 - Port `8083`; database `ridelink_ride_db`; package `com.ridelink.ride`.
 - Packages: `client`, `config`, `controller`, `dto`, `exception`, `model`, `repository`, `service`, `service.impl`.
@@ -136,7 +209,15 @@ Do not infer installed local tool versions from these build declarations. Check 
 
 Invalid transitions return `409`. Cancellation from IN_PROGRESS is rejected, despite the broader arrow in the `RideStatus` source comment. Lifecycle timestamps and cancellation reason are stored. Completion recalculates fare and attempts payment creation; payment failure does not prevent completion from being saved.
 
-### Fare & Payment Service
+**Validation and errors:** `CreateRideRequest` requires nonblank passenger/pickup/destination fields; distance has `@Positive` but lacks `@NotNull`, so missing distance can cause 500. `CancelRideRequest` requires a nonblank reason. `RideController` applies `@Valid` to creation/cancellation. `GlobalExceptionHandler` maps missing rides to 404, invalid states/no driver to 409, external errors to 502, validation/illegal arguments to 400 and unexpected errors to 500.
+
+**Integration and security:** `DriverServiceClient` retrieves available drivers; `PaymentServiceClient` estimates fare and creates a simulated CARD payment on completion. `RestClientConfig` forwards the current Bearer JWT per call. Authentication does not enforce operation-specific roles or ride ownership. See [Inter-service communication](#inter-service-communication) for fallbacks/failures.
+
+**APIs and tests:** `RideController` documents all ten routes with OpenAPI annotations. `RideServiceImplTest` covers creation, assignment, lifecycle, cancellation and failures; `JwtContractTest`, `JwtSecurityTest`, `TokenForwardingTest` and `RideServiceApplicationTests` cover token contracts, filters, JWT forwarding and context loading.
+
+## Fare & Payment Service
+
+**Owner: Disanayaka K G G S - IT24102031.**
 
 - Port `8084`; database `ridelink_payment_db`; package `com.ridelink.payment`.
 - Uses `spring.mongodb.uri=${MONGODB_URI}` and `spring.mongodb.database=ridelink_payment_db`; configure MONGODB_URI in the launch environment.
@@ -150,7 +231,322 @@ Invalid transitions return `409`. Cancellation from IN_PROGRESS is rejected, des
 - Receipts are read-only JSON projections available in every payment state, not just SUCCESS. Legacy records can have a null transaction reference.
 - There is no payment gateway, payment-method enum, duplicate-payment prevention, or validation of the requested amount against a Ride record. All supported JWT roles have equal access to Payment APIs.
 
-## 6. Complete API reference
+**Fare examples:** `Fare = 150 + (distanceKm * 80)`: 5 km = 550; 10 km = 950. A typical demonstration creates a PENDING payment and then updates it to SUCCESS. This is simulation, not confirmation from a payment provider.
+
+**Validation and errors:** `PaymentRequest` uses `@NotBlank`, `@NotNull` and `@Positive`; `PaymentStatusRequest` requires a status enum. `FareRequest` requires distance >= 0.1; `FareCalculationRequest` requires distance >= 0.01. Controllers apply `@Valid`. `GlobalExceptionHandler` returns field-level 400 errors, 400 for malformed JSON/invalid enum, 404 for missing payments and 500 for unexpected errors. Its generic handler includes exception text in details, which can disclose internal information.
+
+**Security and APIs:** `JwtConfig` validates signature, timestamps, issuer, subject and role. `SecurityConfig` permits public estimation/docs and requires JWTs elsewhere, with no payment ownership or role-specific authorization. `PaymentController` handles creation, lookup/history, statuses and read-only receipt projection; the two fare controllers handle their separate routes.
+
+**Tests:** `FareCalculationServiceTest`, `FareCalculationControllerTest`, `PaymentControllerTest`, `JwtContractTest`, `JwtSecurityTest` and `FarePaymentServiceApplicationTests` cover business logic, controllers, validation, security and context loading. Payment controller tests use real services with a mocked repository; they do not prove live MongoDB persistence.
+
+## Software Engineering Concepts and Best Practices
+
+### SOLID Principles
+
+| Principle | Current evidence | Scope / limitation |
+| --- | --- | --- |
+| SRP | Controllers handle HTTP, services business operations, repositories persistence and DTOs request/response data. Payment separates fare calculation from payment processing. | Receipt projection remains within `PaymentServiceImpl`; no separate component is needed merely to claim SRP. |
+| DIP | Constructor injection in Account/Payment; Lombok `@RequiredArgsConstructor` in Driver/Ride. `RideController` depends on `RideService`; Payment controllers depend on `PaymentService`, `FareService` and `FareCalculationService`. Services use repository interfaces. | Account/Driver controllers use concrete services; clients and repositories retain Spring-specific dependencies. |
+| ISP | `FareService` and `FareCalculationService` are focused single-operation contracts; payment operations are grouped in `PaymentService`. | No need to invent interfaces for every class; `PaymentService` remains a related multi-operation contract. |
+| OCP | `RideService`/`RideServiceImpl` and Payment service abstractions allow another implementation to be injected without rewriting controllers, with bean selection configured. | Extension boundaries exist, but there is no implemented pricing-strategy/plugin system. Rates/formulas remain embedded in implementations. |
+| LSP | `RideServiceImpl`, `PaymentServiceImpl`, `FareServiceImpl` and `FareCalculationServiceImpl` implement and are consumed through their declared contracts. | No multiple production implementations of the same interface or substitution-contract tests demonstrate strong LSP evidence. Merely having an interface is insufficient to claim it is fully proven. |
+
+### Coding conventions
+
+Classes use PascalCase, methods/variables camelCase, constants uppercase names such as `BASE_FARE`, and packages separate controller/service/repository/config/DTO/model/exception concerns. Exceptions have descriptive names such as `PaymentNotFoundException` and `InvalidRideStateException`. Request DTOs are distinct from persistence models, although Driver/Payment return models directly in several endpoints. REST resources are broadly consistent, with Account retaining its `/api/v1` prefix.
+
+Conventions are not perfectly uniform: Account uses manual accessors while other services use Lombok; formatting varies; the two Payment fare services duplicate rates/formulas using different number types. Ride's fallback also repeats the fare rule. These are current trade-offs, not evidence of a shared pricing engine.
+
+### Validation and exception handling
+
+Jakarta constraints and controller `@Valid` enforce request-level rules. Service guards enforce Ride lifecycle transitions and selected duplicate checks. Each service centralizes applicable errors in `GlobalExceptionHandler`; payloads and handled exception types differ. Missing Ride distance remains a documented defect. See [Error handling and validation](#error-handling-and-validation) for implemented statuses.
+
+### Security
+
+Account hashes passwords with BCrypt and issues JWTs; Driver/Ride/Payment validate compatible tokens. Authentication establishes the caller; authorization decides whether that caller may perform an operation. Driver roles and Account self/admin rules demonstrate authorization, while Ride/Payment ownership checks remain absent. Stateless security and environment-based secret configuration are implemented; this prototype is not production-hardened.
+
+### Testing
+
+JUnit/Mockito unit tests, MockMvc controller/security tests and Ride HTTP-client tests cover happy paths and failures. Maven and CI run service suites; Postman verifies the integrated runtime workflow. Unit tests and context loading do not establish live Atlas persistence. No coverage percentage is claimed.
+
+### Technical documentation
+
+This README provides architecture and JWT sequence diagrams, setup, API contracts, tests and limitations. Swagger/OpenAPI and the supplied Postman collection/environment support API exploration. Driver/Ride contain useful API/client comments; JavaDoc is not comprehensive. `docs/architecture`, `docs/sequence-diagrams` and `docs/screenshots` contain placeholders, not completed evidence. Historical service docs should be checked against source; use this root README for final setup.
+
+### Continuous integration
+
+[RideLink CI](.github/workflows/ci.yml) independently runs all four Maven test suites on configured pushes/pull requests. Setup/triggers are documented in [GitHub Actions CI](#github-actions-ci); no particular hosted run is asserted to be green.
+
+## JWT Authentication and Authorization
+
+Account authenticates credentials and issues JWTs. Driver, Ride and Payment only validate tokens; they expose no login/token-generation endpoints.
+
+| Claim | Account-issued value | Validation in Driver/Ride/Payment |
+| --- | --- | --- |
+| `sub` | User document ID | Required, nonblank; becomes principal name |
+| `role` | PASSENGER, DRIVER or ADMIN | Required string, exact supported value |
+| `email` | Account email | Issued but not required by these validators |
+| `iss` | Default `ridelink-account` | Must match configured issuer |
+| `iat` | Issuance time | Issued; no separate required-claim check |
+| `exp` | Issuance + configured lifetime | Required, checked with zero clock-skew allowance |
+
+The resource servers also validate `nbf` if present. They validate the HMAC signature with raw UTF-8 bytes of the shared secret, not Base64-decoded bytes. For Account compatibility, keys shorter than 32 bytes are zero-padded to 32 bytes. Algorithm selection is HS256 for effective lengths 32–47 bytes, HS384 for 48–63, and HS512 for >=64. Use a strong shared secret rather than relying on short-key padding.
+
+```text
+JWT_SECRET=YOUR_SHARED_JWT_SECRET
+JWT_ISSUER=ridelink-account
+```
+
+All four processes must use **exactly the same JWT_SECRET**. Account uses `JWT_EXPIRATION_MS` with default `3600000` (one hour). Validators use the token's exp, not a separately configured lifetime. Account and Payment explicitly read JWT_ISSUER; Driver and Ride declare a literal `jwt.issuer=ridelink-account` in their property files. Keep the issuer at ridelink-account for the documented setup.
+
+Authority mappings are PASSENGER -> ROLE_PASSENGER, DRIVER -> ROLE_DRIVER, ADMIN -> ROLE_ADMIN. All services configure stateless security and disable CSRF, form login and HTTP Basic. Account supplies a JWT-only UserDetailsService that never loads a password-login user; resource-server configuration prevents the generated development user in the other services.
+
+**Account's inbound filter differs from the three resource servers:** it verifies signed claims and expiry when present through JJWT, but does not explicitly require issuer/subject/role/expiration using the same validators. Its filter clears failed authentication and has no explicit Bearer 401 entry point; do not assume its unauthenticated protected responses match the resource servers' tested 401 behavior. Invalid login credentials explicitly return 401.
+
+For Driver/Ride/Payment, missing, malformed, expired or invalid tokens on protected routes return **401 Unauthorized**. A valid token without a required Driver role returns **403 Forbidden**. Account's self/admin and status-update checks also produce 403 when unauthorized. A 403 is not fixed by repeatedly logging in with the same insufficient role.
+
+Public security paths, in addition to the API tables:
+
+| Service | Public path rules |
+| --- | --- |
+| Account | `/api/v1/auth/**`, `/api/v1/internal/**` (controller still checks internal key), `/swagger-ui/**`, `/swagger-ui.html`, `/v3/api-docs/**`, `/actuator/**` |
+| Driver | `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**` |
+| Ride | `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**`, `/api-docs/**`, `/actuator/**`, `/error` |
+| Payment | `POST /api/fares/estimate`, `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**` |
+
+All permit internal ERROR dispatches; Account also permits FORWARD dispatches. A permitted pattern does not imply an endpoint exists: no Actuator dependency is declared. All remaining application requests require authentication. On resource servers, an invalid supplied Bearer token may be rejected even for a public route; choose No Auth for public-access checks.
+
+## JWT Token Forwarding
+
+```mermaid
+sequenceDiagram
+    participant C as Client / Postman
+    participant R as Ride Service
+    participant D as Driver Service
+    participant P as Payment Service
+    C->>R: Request + Bearer JWT
+    R->>R: Validate JWT and create authentication
+    R->>D: Available-driver lookup + same JWT
+    D-->>R: Available drivers
+    R->>P: Fare estimate / payment creation + same JWT
+    P-->>R: Fare / payment
+    R-->>C: Ride response
+```
+
+The diagram summarizes calls across the ride workflow; not every request makes every call. `RestClientConfig` installs a request interceptor. Both clients clone its builder, then use their configured base URL. On each synchronous outgoing call, the interceptor reads an authenticated `JwtAuthenticationToken` from `SecurityContextHolder` and sets `Authorization: Bearer <same token>`.
+
+The client does not store tokens between callers or create a second service-token system. With no authenticated JWT context, no token is injected. This implementation covers synchronous request handling; it does not propagate context to future background/async work automatically.
+
+Ride's `TokenForwardingTest` verifies both Payment requests, Driver lookup, switching from passenger to driver credentials on the same client, and no retained header after clearing the context.
+
+## Inter-Service Communication
+
+| Caller | Callee and route | Trigger / behavior |
+| --- | --- | --- |
+| Ride | Driver: `GET /api/drivers/available` | Assignment selects first available or checks the explicit driver ID |
+| Ride | Payment: `POST /api/fares/estimate` | Creation and completion submit distanceKm |
+| Ride | Payment: `POST /api/payments` | Completion sends rideId, passengerId, calculated amount, paymentMethod CARD |
+
+| Ride property | Environment placeholder | Default |
+| --- | --- | --- |
+| `app.driver-service.base-url` | `DRIVER_SERVICE_URL` | `http://localhost:8082` |
+| `app.payment-service.base-url` | `PAYMENT_SERVICE_URL` | `http://localhost:8084` |
+
+No implemented client calls Account's internal API. Ride does **not** call Driver to change availability, reserve a driver, or release a driver after completion/cancellation.
+
+Driver REST errors become an ExternalServiceException (502 during assignment). An empty list is instead a no-available-driver conflict (409). On a fare-estimate RestClientException, Ride uses the local formula 150 + distanceKm * 80; a successful but missing estimatedFare response is an error rather than that fallback. Payment creation errors are caught by Ride completion: it can return COMPLETED with a null paymentId. There is no automatic retry/reconciliation job or distributed transaction.
+
+## MongoDB Data Ownership
+
+| Service | Database property | Collection | Document / repository |
+| --- | --- | --- | --- |
+| Account | `ridelink_account_db` | `users` | User / UserRepository |
+| Driver | `ridelink_driver_db` | `drivers` | Driver / DriverRepository |
+| Ride | `ridelink_ride_db` | `rides` | Ride / RideRepository |
+| Payment | `ridelink_payment_db` | `payments` | Payment / PaymentRepository |
+
+All four set `spring.mongodb.database` explicitly. Vehicle fields are in `drivers`; receipts are computed from `payments` and have no separate collection. Account declares a unique email index and Ride declares a unique rideId index; index annotations alone are not evidence that an existing deployment created those indexes.
+
+For Atlas, configure a cluster, a database user with suitable permissions, and network access for the application hosts. Use the separate database names above, even if one cluster hosts them all. Verify persisted documents through authorized Atlas access after API writes. There is no cross-service database join or foreign-key enforcement.
+
+All four services consume `MONGODB_URI`; Driver has a localhost development default, while Account, Ride and Payment require it. Each keeps its own explicit database property. Ride and Payment currently use the environment-placeholder pattern:
+
+```properties
+spring.mongodb.uri=${MONGODB_URI}
+```
+
+Set a private URI in each launch process. `SPRING_MONGODB_URI` remains an optional standard Spring override, not a required workaround for current Ride configuration. Never reproduce credentials from configuration/history in documentation.
+
+## Environment Variables
+
+These are the application placeholders explicitly found in configuration; requiredness describes the actual code, not a production policy.
+
+| Variable | Required | Used by | Purpose | Safe example |
+| --- | --- | --- | --- | --- |
+| `JWT_SECRET` | Yes, no configured default | All four | Shared HMAC key | `YOUR_SHARED_JWT_SECRET` |
+| `JWT_ISSUER` | Optional | Account, Payment explicitly; CI sets it for all jobs | Default ridelink-account | `ridelink-account` |
+| `JWT_EXPIRATION_MS` | Optional | Account | Token lifetime; default 3600000 ms | `3600000` |
+| `INTERNAL_API_KEY` | Optional in code; configure securely for use | Account | X-Internal-Key check; a development fallback exists and is not reproduced | `YOUR_INTERNAL_API_KEY` |
+| `MONGODB_URI` | Account, Ride and Payment: yes; Driver: optional | All four; CI sets it for all jobs | Mongo connection; Driver defaults to local Mongo on 27017 with ridelink_driver_db | `YOUR_MONGODB_ATLAS_URI` |
+| `DRIVER_SERVICE_URL` | Optional | Ride | Driver base URL | `http://localhost:8082` |
+| `PAYMENT_SERVICE_URL` | Optional | Ride | Payment base URL | `http://localhost:8084` |
+
+The following is a Spring property override used in this setup, **not** a custom placeholder in application.properties:
+
+| Variable | Why use it | Underlying property |
+| --- | --- | --- |
+| `SPRING_MONGODB_URI` | Optional standard override for any service; all four already consume MONGODB_URI | `spring.mongodb.uri` |
+
+Account declares both `spring.mongodb.uri` and the older `spring.data.mongodb.uri`, both referencing MONGODB_URI; its Boot 4 configuration uses the former. Keep the explicit per-service database properties.
+
+In Windows PowerShell, replace the placeholder strings locally. Store shared values once if appropriate for your workstation:
+
+```powershell
+[Environment]::SetEnvironmentVariable("JWT_SECRET", "YOUR_SHARED_JWT_SECRET", "User")
+[Environment]::SetEnvironmentVariable("JWT_ISSUER", "ridelink-account", "User")
+[Environment]::SetEnvironmentVariable("MONGODB_URI", "YOUR_MONGODB_ATLAS_URI", "User")
+[Environment]::SetEnvironmentVariable("INTERNAL_API_KEY", "YOUR_INTERNAL_API_KEY", "User")
+```
+
+Persistent User variables do not update an already-open terminal or IDE process. In **each** launch terminal, load the values into the process:
+
+```powershell
+$env:JWT_SECRET = [Environment]::GetEnvironmentVariable("JWT_SECRET", "User")
+$env:JWT_ISSUER = [Environment]::GetEnvironmentVariable("JWT_ISSUER", "User")
+$env:MONGODB_URI = [Environment]::GetEnvironmentVariable("MONGODB_URI", "User")
+$env:INTERNAL_API_KEY = [Environment]::GetEnvironmentVariable("INTERNAL_API_KEY", "User")
+# Optional: set SPRING_MONGODB_URI only when intentionally overriding MONGODB_URI.
+
+if ($env:JWT_SECRET) { "JWT_SECRET OK" } else { "JWT_SECRET MISSING" }
+if ($env:MONGODB_URI) { "MONGODB_URI OK" } else { "MONGODB_URI MISSING" }
+
+```
+
+Use service-specific Mongo credentials per terminal if your Atlas permissions require them. The example uses one privately supplied URI with separate database properties. Never print the actual URI, JWT secret, internal key or JWT in shared logs/screenshots.
+
+## Prerequisites
+
+- JDK 17, with `JAVA_HOME`/PATH pointing to the intended JDK.
+- Git; VS Code or IntelliJ IDEA is optional.
+- Postman for the complete workflow, including Payment.
+- Authorized MongoDB Atlas access, database permissions and network allowlisting, or an intentionally configured local MongoDB server.
+- Internet access for Maven downloads and Atlas connectivity.
+- The included Maven Wrapper; a global Maven installation is unnecessary.
+
+```powershell
+java -version
+javac -version
+git --version
+.\account-service\mvnw.cmd -v
+```
+
+Run the wrapper version check from the repository root. No Docker setup is required by the application itself; CI uses MongoDB service containers.
+
+## Clone and Setup
+
+For a new checkout:
+
+```powershell
+git clone https://github.com/disanayakaKG/ridelink-microservices.git
+cd ridelink-microservices
+git checkout main
+git pull origin main
+git status
+```
+
+For an existing checkout, first inspect local work:
+
+```powershell
+git status
+```
+
+If there are uncommitted changes, review them and intentionally commit/stash them before switching or pulling; do not blindly overwrite local work. With a clean checkout:
+
+```powershell
+git checkout main
+git pull origin main
+git status
+```
+
+Expected after a successful update with no local changes: up to date with origin/main and a clean working tree. Configure the environment from [Environment variables](#environment-variables) next.
+
+## Build and Test
+
+From the repository root, run the following sequence in PowerShell:
+
+```powershell
+cd account-service
+.\mvnw.cmd clean test
+cd ..\driver-vehicle-service
+.\mvnw.cmd clean test
+cd ..\ride-service
+.\mvnw.cmd clean test
+cd ..\fare-payment-service
+.\mvnw.cmd clean test
+cd ..
+```
+
+Check each command's result before continuing. `clean test` compiles main/test code and runs the tests; it does not package a deployable JAR. `BUILD SUCCESS` confirms that Maven invocation, not a successful live service startup or Atlas persistence test. Reports are written to each service's `target/surefire-reports/`.
+
+This README does not present an old test count as a verified final run. Tests were inspected for this documentation update, not rerun. Run all four commands above to collect current assessment evidence.
+
+## Run All Four Services
+
+Use four terminals. In every terminal, start from your checkout's repository root and run the environment-loading block in [Environment variables](#environment-variables) first. Confirm MONGODB_URI is present for Account, Ride and Payment; Driver may use its local development default.
+
+**Terminal 1 — Account, port 8081**
+
+```powershell
+cd account-service
+.\mvnw.cmd spring-boot:run
+```
+
+**Terminal 2 — Driver, port 8082**
+
+```powershell
+cd driver-vehicle-service
+.\mvnw.cmd spring-boot:run
+```
+
+**Terminal 3 — Ride, port 8083**
+
+```powershell
+cd ride-service
+.\mvnw.cmd spring-boot:run
+```
+
+**Terminal 4 — Payment, port 8084**
+
+```powershell
+cd fare-payment-service
+.\mvnw.cmd spring-boot:run
+```
+
+A useful startup order is Account, Driver, Payment, then Ride; wait for every required service before exercising integration. Each process stays in its terminal; stop it with Ctrl+C.
+
+Look for the corresponding Tomcat port and application-start message:
+
+| Port | Application-start message |
+| ---: | --- |
+| 8081 | `Started AccountServiceApplication` |
+| 8082 | `Started DriverVehicleServiceApplication` |
+| 8083 | `Started RideServiceApplication` |
+| 8084 | `Started FarePaymentServiceApplication` |
+
+**Maven BUILD SUCCESS at the end of spring-boot:run does NOT by itself prove the application started successfully.** Inspect earlier output for ApplicationContext failures, look for `Tomcat started on port ...` and the correct `Started ...Application` message, then verify HTTP access and a database-backed operation.
+
+## Port Verification
+
+```powershell
+netstat -ano | findstr :8081
+netstat -ano | findstr :8082
+netstat -ano | findstr :8083
+netstat -ano | findstr :8084
+```
+
+Each running service should have a matching local port in `LISTENING` state. The last column is the owning PID. A matching connection in another state is not proof that the service is listening; a listener also does not prove MongoDB connectivity or correct application identity.
+
+## Complete API Reference
 
 These tables enumerate **32 controller method/route pairs**: Account 7, Driver 6, Ride 10, Payment 9. Framework documentation/error paths are listed separately. “Any role” means PASSENGER, DRIVER or ADMIN for the resource-server services. Send JSON with `Content-Type: application/json`.
 
@@ -358,277 +754,20 @@ Receipt response uses `paymentId` instead of the Payment model's `id`:
 
 Unknown payment/ride lookups, receipt requests and status updates return 404. List/history queries return arrays. There is no transaction-reference lookup endpoint or separate payment business-ID generator: paymentId refers to the MongoDB document ID.
 
-## 7. JWT authentication and authorization
+## Swagger / OpenAPI
 
-Account authenticates credentials and issues JWTs. Driver, Ride and Payment only validate tokens; they expose no login/token-generation endpoints.
-
-| Claim | Account-issued value | Validation in Driver/Ride/Payment |
-| --- | --- | --- |
-| `sub` | User document ID | Required, nonblank; becomes principal name |
-| `role` | PASSENGER, DRIVER or ADMIN | Required string, exact supported value |
-| `email` | Account email | Issued but not required by these validators |
-| `iss` | Default `ridelink-account` | Must match configured issuer |
-| `iat` | Issuance time | Issued; no separate required-claim check |
-| `exp` | Issuance + configured lifetime | Required, checked with zero clock-skew allowance |
-
-The resource servers also validate `nbf` if present. They validate the HMAC signature with raw UTF-8 bytes of the shared secret, not Base64-decoded bytes. For Account compatibility, keys shorter than 32 bytes are zero-padded to 32 bytes. Algorithm selection is HS256 for effective lengths 32–47 bytes, HS384 for 48–63, and HS512 for >=64. Use a strong shared secret rather than relying on short-key padding.
-
-```text
-JWT_SECRET=YOUR_SHARED_JWT_SECRET
-JWT_ISSUER=ridelink-account
-```
-
-All four processes must use **exactly the same JWT_SECRET**. Account uses `JWT_EXPIRATION_MS` with default `3600000` (one hour). Validators use the token's exp, not a separately configured lifetime. Account and Payment explicitly read JWT_ISSUER; Driver and Ride declare a literal `jwt.issuer=ridelink-account` in their property files. Keep the issuer at ridelink-account for the documented setup.
-
-Authority mappings are PASSENGER -> ROLE_PASSENGER, DRIVER -> ROLE_DRIVER, ADMIN -> ROLE_ADMIN. All services configure stateless security and disable CSRF, form login and HTTP Basic. Account supplies a JWT-only UserDetailsService that never loads a password-login user; resource-server configuration prevents the generated development user in the other services.
-
-**Account's inbound filter differs from the three resource servers:** it verifies signed claims and expiry when present through JJWT, but does not explicitly require issuer/subject/role/expiration using the same validators. Its filter clears failed authentication and has no explicit Bearer 401 entry point; do not assume its unauthenticated protected responses match the resource servers' tested 401 behavior. Invalid login credentials explicitly return 401.
-
-For Driver/Ride/Payment, missing, malformed, expired or invalid tokens on protected routes return **401 Unauthorized**. A valid token without a required Driver role returns **403 Forbidden**. Account's self/admin and status-update checks also produce 403 when unauthorized. A 403 is not fixed by repeatedly logging in with the same insufficient role.
-
-Public security paths, in addition to the API tables:
-
-| Service | Public path rules |
-| --- | --- |
-| Account | `/api/v1/auth/**`, `/api/v1/internal/**` (controller still checks internal key), `/swagger-ui/**`, `/swagger-ui.html`, `/v3/api-docs/**`, `/actuator/**` |
-| Driver | `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**` |
-| Ride | `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**`, `/api-docs/**`, `/actuator/**`, `/error` |
-| Payment | `POST /api/fares/estimate`, `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**` |
-
-All permit internal ERROR dispatches; Account also permits FORWARD dispatches. A permitted pattern does not imply an endpoint exists: no Actuator dependency is declared. All remaining application requests require authentication. On resource servers, an invalid supplied Bearer token may be rejected even for a public route; choose No Auth for public-access checks.
-
-## 8. JWT token forwarding
-
-```mermaid
-sequenceDiagram
-    participant C as Client / Postman
-    participant R as Ride Service
-    participant D as Driver Service
-    participant P as Payment Service
-    C->>R: Request + Bearer JWT
-    R->>R: Validate JWT and create authentication
-    R->>D: Available-driver lookup + same JWT
-    D-->>R: Available drivers
-    R->>P: Fare estimate / payment creation + same JWT
-    P-->>R: Fare / payment
-    R-->>C: Ride response
-```
-
-The diagram summarizes calls across the ride workflow; not every request makes every call. `RestClientConfig` installs a request interceptor. Both clients clone its builder, then use their configured base URL. On each synchronous outgoing call, the interceptor reads an authenticated `JwtAuthenticationToken` from `SecurityContextHolder` and sets `Authorization: Bearer <same token>`.
-
-The client does not store tokens between callers or create a second service-token system. With no authenticated JWT context, no token is injected. This implementation covers synchronous request handling; it does not propagate context to future background/async work automatically.
-
-Ride's `TokenForwardingTest` verifies both Payment requests, Driver lookup, switching from passenger to driver credentials on the same client, and no retained header after clearing the context.
-
-## 9. Inter-service communication
-
-| Caller | Callee and route | Trigger / behavior |
-| --- | --- | --- |
-| Ride | Driver: `GET /api/drivers/available` | Assignment selects first available or checks the explicit driver ID |
-| Ride | Payment: `POST /api/fares/estimate` | Creation and completion submit distanceKm |
-| Ride | Payment: `POST /api/payments` | Completion sends rideId, passengerId, calculated amount, paymentMethod CARD |
-
-| Ride property | Environment placeholder | Default |
-| --- | --- | --- |
-| `app.driver-service.base-url` | `DRIVER_SERVICE_URL` | `http://localhost:8082` |
-| `app.payment-service.base-url` | `PAYMENT_SERVICE_URL` | `http://localhost:8084` |
-
-No implemented client calls Account's internal API. Ride does **not** call Driver to change availability, reserve a driver, or release a driver after completion/cancellation.
-
-Driver REST errors become an ExternalServiceException (502 during assignment). An empty list is instead a no-available-driver conflict (409). On a fare-estimate RestClientException, Ride uses the local formula 150 + distanceKm * 80; a successful but missing estimatedFare response is an error rather than that fallback. Payment creation errors are caught by Ride completion: it can return COMPLETED with a null paymentId. There is no automatic retry/reconciliation job or distributed transaction.
-
-## 10. MongoDB data ownership
-
-| Service | Database property | Collection | Document / repository |
+| Service | Swagger UI configuration | OpenAPI JSON | Access |
 | --- | --- | --- | --- |
-| Account | `ridelink_account_db` | `users` | User / UserRepository |
-| Driver | `ridelink_driver_db` | `drivers` | Driver / DriverRepository |
-| Ride | `ridelink_ride_db` | `rides` | Ride / RideRepository |
-| Payment | `ridelink_payment_db` | `payments` | Payment / PaymentRepository |
+| Account | `http://localhost:8081/swagger-ui.html` | `http://localhost:8081/v3/api-docs` | Public |
+| Driver | `http://localhost:8082/swagger-ui.html` | `http://localhost:8082/v3/api-docs` | Public |
+| Ride | `http://localhost:8083/swagger-ui.html` | `http://localhost:8083/v3/api-docs` | Public |
+| Payment | `http://localhost:8084/swagger-ui.html` | `http://localhost:8084/v3/api-docs` | Public |
 
-All four set `spring.mongodb.database` explicitly. Vehicle fields are in `drivers`; receipts are computed from `payments` and have no separate collection. Account declares a unique email index and Ride declares a unique rideId index; index annotations alone are not evidence that an existing deployment created those indexes.
+The configured UI entry normally redirects to Swagger assets. Driver/Ride/Payment security tests assert public OpenAPI access and UI redirection. Payment tests additionally check documented payment paths, UI assets and `/v3/api-docs/swagger-config`. Account has no corresponding HTTP Swagger test in its suite; verify it at runtime. The repository declares different springdoc versions across services; no runtime compatibility claim is made solely from a dependency declaration.
 
-For Atlas, configure a cluster, a database user with suitable permissions, and network access for the application hosts. Use the separate database names above, even if one cluster hosts them all. Verify persisted documents through authorized Atlas access after API writes. There is no cross-service database join or foreign-key enforcement.
+Ride and Payment each define an OpenApiConfig with title, description, version 1.0.0 and team contact metadata. No custom Bearer security scheme is defined there; do not rely on a Swagger “Authorize” button being available for every protected operation. Postman provides the documented authenticated workflow. Payment declares `springdoc-openapi-starter-webmvc-ui` version `3.1.1`; its properties configure `/swagger-ui.html` and `/v3/api-docs`. These paths and Swagger assets are explicitly permitted by Payment security. Protected business endpoints still require a valid JWT.
 
-Account, Driver and Payment consume MONGODB_URI. Payment now declares:
-
-```properties
-spring.mongodb.uri=${MONGODB_URI}
-spring.mongodb.database=ridelink_payment_db
-```
-
-**Remaining Ride configuration discrepancy:** Ride still has a literal credential-bearing MongoDB connection value rather than a MONGODB_URI placeholder. Its value is deliberately not reproduced here. Override Ride's `spring.mongodb.uri` using `SPRING_MONGODB_URI` as shown below. Existing exposed database credentials should be rotated by their owners; this documentation change does not alter configuration files.
-
-## 11. Environment variables
-
-These are the application placeholders explicitly found in configuration; requiredness describes the actual code, not a production policy.
-
-| Variable | Required | Used by | Purpose | Safe example |
-| --- | --- | --- | --- | --- |
-| `JWT_SECRET` | Yes, no configured default | All four | Shared HMAC key | `YOUR_SHARED_JWT_SECRET` |
-| `JWT_ISSUER` | Optional | Account, Payment explicitly; CI sets it for all jobs | Default ridelink-account | `ridelink-account` |
-| `JWT_EXPIRATION_MS` | Optional | Account | Token lifetime; default 3600000 ms | `3600000` |
-| `INTERNAL_API_KEY` | Optional in code; configure securely for use | Account | X-Internal-Key check; a development fallback exists and is not reproduced | `YOUR_INTERNAL_API_KEY` |
-| `MONGODB_URI` | Account and Payment: yes; Driver: optional | Account, Driver, Payment; CI sets it for all jobs | Mongo connection; Driver defaults to local Mongo on 27017 with ridelink_driver_db | `YOUR_MONGODB_ATLAS_URI` |
-| `DRIVER_SERVICE_URL` | Optional | Ride | Driver base URL | `http://localhost:8082` |
-| `PAYMENT_SERVICE_URL` | Optional | Ride | Payment base URL | `http://localhost:8084` |
-
-The following is a Spring property override used in this setup, **not** a custom placeholder in application.properties:
-
-| Variable | Why use it | Underlying property |
-| --- | --- | --- |
-| `SPRING_MONGODB_URI` | Required by these instructions to override Ride's checked-in connection value; optional for Account/Driver/Payment, which already consume MONGODB_URI | `spring.mongodb.uri` |
-
-Account declares both `spring.mongodb.uri` and the older `spring.data.mongodb.uri`, both referencing MONGODB_URI; its Boot 4 configuration uses the former. Keep the explicit per-service database properties.
-
-In Windows PowerShell, replace the placeholder strings locally. Store shared values once if appropriate for your workstation:
-
-```powershell
-[Environment]::SetEnvironmentVariable("JWT_SECRET", "YOUR_SHARED_JWT_SECRET", "User")
-[Environment]::SetEnvironmentVariable("JWT_ISSUER", "ridelink-account", "User")
-[Environment]::SetEnvironmentVariable("MONGODB_URI", "YOUR_MONGODB_ATLAS_URI", "User")
-[Environment]::SetEnvironmentVariable("INTERNAL_API_KEY", "YOUR_INTERNAL_API_KEY", "User")
-```
-
-Persistent User variables do not update an already-open terminal or IDE process. In **each** launch terminal, load them and apply the Mongo override:
-
-```powershell
-$env:JWT_SECRET = [Environment]::GetEnvironmentVariable("JWT_SECRET", "User")
-$env:JWT_ISSUER = [Environment]::GetEnvironmentVariable("JWT_ISSUER", "User")
-$env:MONGODB_URI = [Environment]::GetEnvironmentVariable("MONGODB_URI", "User")
-$env:INTERNAL_API_KEY = [Environment]::GetEnvironmentVariable("INTERNAL_API_KEY", "User")
-$env:SPRING_MONGODB_URI = $env:MONGODB_URI
-
-if ($env:JWT_SECRET) { "JWT_SECRET OK" } else { "JWT_SECRET MISSING" }
-if ($env:MONGODB_URI) { "MONGODB_URI OK" } else { "MONGODB_URI MISSING" }
-if ($env:SPRING_MONGODB_URI) { "Mongo override OK" } else { "Mongo override MISSING" }
-```
-
-Use service-specific Mongo credentials per terminal if your Atlas permissions require them. The example uses one privately supplied URI with separate database properties. Never print the actual URI, JWT secret, internal key or JWT in shared logs/screenshots.
-
-## 12. Prerequisites
-
-- JDK 17, with `JAVA_HOME`/PATH pointing to the intended JDK.
-- Git; VS Code or IntelliJ IDEA is optional.
-- Postman for the complete workflow, including Payment.
-- Authorized MongoDB Atlas access, database permissions and network allowlisting, or an intentionally configured local MongoDB server.
-- Internet access for Maven downloads and Atlas connectivity.
-- The included Maven Wrapper; a global Maven installation is unnecessary.
-
-```powershell
-java -version
-javac -version
-git --version
-.\account-service\mvnw.cmd -v
-```
-
-Run the wrapper version check from the repository root. No Docker setup is required by the application itself; CI uses MongoDB service containers.
-
-## 13. Clone and initial setup
-
-For a new checkout:
-
-```powershell
-git clone https://github.com/disanayakaKG/ridelink-microservices.git
-cd ridelink-microservices
-git checkout main
-git pull origin main
-git status
-```
-
-For an existing checkout, first inspect local work:
-
-```powershell
-git status
-```
-
-If there are uncommitted changes, review them and intentionally commit/stash them before switching or pulling; do not blindly overwrite local work. With a clean checkout:
-
-```powershell
-git checkout main
-git pull origin main
-git status
-```
-
-Expected after a successful update with no local changes: up to date with origin/main and a clean working tree. Configure the environment from section 11 next.
-
-## 14. Build and test each service
-
-From the repository root, run the following sequence in PowerShell:
-
-```powershell
-cd account-service
-.\mvnw.cmd clean test
-cd ..\driver-vehicle-service
-.\mvnw.cmd clean test
-cd ..\ride-service
-.\mvnw.cmd clean test
-cd ..\fare-payment-service
-.\mvnw.cmd clean test
-cd ..
-```
-
-Check each command's result before continuing. `clean test` compiles main/test code and runs the tests; it does not package a deployable JAR. `BUILD SUCCESS` confirms that Maven invocation, not a successful live service startup or Atlas persistence test. Reports are written to each service's `target/surefire-reports/`.
-
-This README does not present an old test count as a verified final run. Tests were inspected for this documentation update, not rerun. The historical Driver/Ride counts in JWT_INTEGRATION.md describe an earlier run. Run all four commands above to collect current assessment evidence.
-
-## 15. Run all four services locally
-
-Use four terminals. In every terminal, start from your checkout's repository root and run the environment-loading block in section 11 first. Confirm MONGODB_URI is present for Account and Payment, and the SPRING_MONGODB_URI override is present before starting Ride.
-
-**Terminal 1 — Account, port 8081**
-
-```powershell
-cd account-service
-.\mvnw.cmd spring-boot:run
-```
-
-**Terminal 2 — Driver, port 8082**
-
-```powershell
-cd driver-vehicle-service
-.\mvnw.cmd spring-boot:run
-```
-
-**Terminal 3 — Ride, port 8083**
-
-```powershell
-cd ride-service
-.\mvnw.cmd spring-boot:run
-```
-
-**Terminal 4 — Payment, port 8084**
-
-```powershell
-cd fare-payment-service
-.\mvnw.cmd spring-boot:run
-```
-
-A useful startup order is Account, Driver, Payment, then Ride; wait for every required service before exercising integration. Each process stays in its terminal; stop it with Ctrl+C.
-
-Look for the corresponding Tomcat port and application-start message:
-
-| Port | Application-start message |
-| ---: | --- |
-| 8081 | `Started AccountServiceApplication` |
-| 8082 | `Started DriverVehicleServiceApplication` |
-| 8083 | `Started RideServiceApplication` |
-| 8084 | `Started FarePaymentServiceApplication` |
-
-**Maven BUILD SUCCESS at the end of spring-boot:run does NOT by itself prove the application started successfully.** Inspect earlier output for ApplicationContext failures, look for `Tomcat started on port ...` and the correct `Started ...Application` message, then verify HTTP access and a database-backed operation.
-
-## 16. Verify all ports
-
-```powershell
-netstat -ano | findstr :8081
-netstat -ano | findstr :8082
-netstat -ano | findstr :8083
-netstat -ano | findstr :8084
-```
-
-Each running service should have a matching local port in `LISTENING` state. The last column is the owning PID. A matching connection in another state is not proof that the service is listening; a listener also does not prove MongoDB connectivity or correct application identity.
-
-## 17. Postman setup
+## Postman Setup
 
 Import the supplied files in Postman using **Import -> Files**:
 
@@ -669,7 +808,7 @@ Run **End-to-End Workflow** as a folder in order, with `driverStatus=AVAILABLE` 
 
 For JSON requests, select Body -> raw -> JSON. Keep tokens and credentials local/private and remove them before exporting evidence or collections.
 
-## 18. Postman JWT auto-save
+### JWT auto-save
 
 The supplied registration/login requests already include **Scripts -> After response** scripts that save token and map response role/userId to passengerToken + passengerId, driverToken + driverAccountId, or adminToken. Driver profile responses save driverId; Ride responses save rideId, rideMongoId and paymentId when returned; Payment responses save paymentId and transactionReference.
 
@@ -719,15 +858,15 @@ if (pm.response.code === 200 || pm.response.code === 201) {
 
 The role check prevents a later driver login from overwriting passengerId. Decoding the payload here is only a convenience for environment variables; it does not verify the signature. Services perform verification. The script does not log the JWT.
 
-## 19. Complete end-to-end workflow
+## End-to-End Workflow
 
 Run all four services with the shared secret and reachable databases. Use fresh test accounts or existing authorized local accounts. Do not use example IDs as substitutes for actual returned IDs. The imported End-to-End Workflow folder implements this sequence and already saves response variables. Its default distanceKm is 5 (fare 550); the manual examples below use 10 km (fare 950). Set distanceKm=10 if you want the imported workflow to match these examples.
 
 ### A. Prepare accounts and an available driver
 
-1. Register a passenger with `POST http://localhost:8081/api/v1/auth/register`, No Auth, using the registration body in section 6 with role PASSENGER. Expect 201; run the auto-save script. For an existing account, use login instead.
+1. Register a passenger with `POST http://localhost:8081/api/v1/auth/register`, No Auth, using the registration body in [Complete API reference](#complete-api-reference) with role PASSENGER. Expect 201; run the auto-save script. For an existing account, use login instead.
 2. Register/login a DRIVER account using its own locally supplied email/password. The same script saves driverAccountId and driverToken. No driver profile is created automatically by Account registration.
-3. Send `POST http://localhost:8082/api/drivers` with Bearer `{{driverToken}}` and the Driver profile body in section 6. Expect 201 and UNAVAILABLE. Save response `id` as driverId. If the profile already exists (409), retrieve it with `GET http://localhost:8082/api/drivers/account/{{driverAccountId}}` and save its id.
+3. Send `POST http://localhost:8082/api/drivers` with Bearer `{{driverToken}}` and the Driver profile body in [Complete API reference](#complete-api-reference). Expect 201 and UNAVAILABLE. Save response `id` as driverId. If the profile already exists (409), retrieve it with `GET http://localhost:8082/api/drivers/account/{{driverAccountId}}` and save its id.
 4. Send `PATCH http://localhost:8082/api/drivers/{{driverId}}/availability?status=AVAILABLE` with driverToken and no body. Expect 200 and AVAILABLE. Optional location update: `PATCH http://localhost:8082/api/drivers/{{driverId}}/location` with `{"latitude":6.9271,"longitude":79.8612}`.
 
 ### B. Login and create a ride
@@ -804,7 +943,7 @@ A 200/COMPLETED response alone is insufficient evidence of a payment: Ride catch
 
 To demonstrate cancellation, create another ride and call `POST http://localhost:8083/api/rides/{{rideId}}/cancel` with `{"reason":"Changed plans"}` before it starts. Expect CANCELLED. Do not cancel the completed demonstration ride.
 
-## 20. Negative test scenarios
+## Negative Test Scenarios
 
 Use a valid token unless the scenario tests authentication. Use local test records so existing demonstrations remain reproducible.
 
@@ -840,50 +979,7 @@ To test expiry quickly in a local Account terminal, set `$env:JWT_EXPIRATION_MS 
 
 If Payment is unavailable, Ride fare estimation can fall back to the local formula; completion can still return 200 with no paymentId. Neither response proves successful Payment integration.
 
-## 21. Swagger / OpenAPI
-
-| Service | Swagger UI configuration | OpenAPI JSON | Access |
-| --- | --- | --- | --- |
-| Account | `http://localhost:8081/swagger-ui.html` | `http://localhost:8081/v3/api-docs` | Public |
-| Driver | `http://localhost:8082/swagger-ui.html` | `http://localhost:8082/v3/api-docs` | Public |
-| Ride | `http://localhost:8083/swagger-ui.html` | `http://localhost:8083/v3/api-docs` | Public |
-| Payment | `http://localhost:8084/swagger-ui.html` | `http://localhost:8084/v3/api-docs` | Public |
-
-The configured UI entry normally redirects to Swagger assets. Driver/Ride/Payment security tests assert public OpenAPI access and UI redirection. Payment tests additionally check documented payment paths, UI assets and `/v3/api-docs/swagger-config`. Account has no corresponding HTTP Swagger test in its suite; verify it at runtime. The repository declares different springdoc versions across services; no runtime compatibility claim is made solely from a dependency declaration.
-
-Ride and Payment each define an OpenApiConfig with title, description, version 1.0.0 and team contact metadata. No custom Bearer security scheme is defined there; do not rely on a Swagger “Authorize” button being available for every protected operation. Postman provides the documented authenticated workflow. Payment declares `springdoc-openapi-starter-webmvc-ui` version `3.1.1`; its properties configure `/swagger-ui.html` and `/v3/api-docs`. These paths and Swagger assets are explicitly permitted by Payment security. Protected business endpoints still require a valid JWT.
-
-## 22. GitHub workflow
-
-```text
-feature branch -> Pull Request -> peer review -> develop
-               -> integration testing -> develop-to-main final PR -> main
-```
-
-Use feature branches and meaningful commits; do not perform day-to-day development directly on main. Review API/security changes with the team before integration. develop is the integration branch and main holds the final stable version.
-
-Local history records the final develop merge as `e4e6b04` (PR #28), the CI workflow merge (PR #27), and the full JWT integration merge (PR #23). Subsequent commits add Payment OpenAPI/environment-based Mongo configuration (`1f3a12f`) and the Postman exports (`8fec172`). These commits establish integration history; they do not independently prove that peer review occurred or that a particular remote CI run passed.
-
-The root .gitignore excludes Maven target directories, common IDE files, .env files, application-local.properties, logs and OS metadata. Ignore rules do not remove sensitive content already tracked in Git.
-
-## 23. GitHub Actions CI
-
-The workflow is [RideLink CI](.github/workflows/ci.yml). It runs on pushes to main/develop and pull requests targeting main/develop, with `contents: read` permission.
-
-| Job ID | Display name | Working directory |
-| --- | --- | --- |
-| `account-service` | Account Service | `account-service` |
-| `driver-service` | Driver & Vehicle Service | `driver-vehicle-service` |
-| `ride-service` | Ride Management Service | `ride-service` |
-| `payment-service` | Fare & Payment Service | `fare-payment-service` |
-
-Each independent job uses ubuntu-latest, a mongo:7 service mapped to port 27017, checkout@v4, setup-java@v4 with Temurin 17 and Maven caching, `chmod +x mvnw`, and `./mvnw -B clean test`.
-
-Jobs set a localhost test MONGODB_URI, a test-only JWT_SECRET, and JWT_ISSUER=ridelink-account. The test key is not reproduced here and must not be used as a deployment secret. Driver/Ride/Payment Spring test contexts additionally override JWT and MongoDB properties with generated keys and localhost test settings.
-
-The pipeline tests projects independently; it does not launch all four applications and execute the Postman workflow. A current all-green main run must be verified in GitHub Actions. Workflow YAML and local merge history do not contain proof of a particular hosted run's outcome.
-
-## 24. Testing strategy
+## Testing Strategy
 
 | Service | Actual test classes / coverage |
 | --- | --- |
@@ -894,11 +990,11 @@ The pipeline tests projects independently; it does not launch all four applicati
 
 Driver/Ride/Payment share the test-fixture pattern AccountJwtTestSupport, which generates test secrets, signs Account-compatible tokens and supplies local Mongo test properties. Contract tests cover key padding/algorithm selection, unsigned tokens and missing secrets. Security tests exercise actual filter chains with MockMvc, including invalid/expired tokens, required claims, authorities, public routes, statelessness, and disabled Basic/development users. Driver tests also check role restrictions. Payment security tests also verify public OpenAPI endpoint documentation, Swagger UI/assets and Swagger configuration.
 
-PaymentControllerTest combines standalone MockMvc with real service implementations and a mocked repository to verify payment validation, histories, references, status updates, receipt fields and legacy null references. TokenForwardingTest uses MockRestServiceServer for the configured clients.
+PaymentControllerTest combines standalone MockMvc with real service implementations and a mocked repository to verify payment validation, histories, references, status updates, receipt fields and legacy null references. Ride's TokenForwardingTest uses MockRestServiceServer for the configured clients.
 
 These tests are not proof of live Atlas writes or a deployed four-service workflow. Account's application test does not start a Spring context. Use the Postman workflow and negative scenarios for runtime evidence, and the four CI jobs for repeatable build/test checks.
 
-## 25. Error handling and validation
+## Error Handling and Validation
 
 Controllers apply Jakarta validation where annotated. Each service has a GlobalExceptionHandler, but their payloads are not identical.
 
@@ -935,11 +1031,62 @@ Example Payment not-found response:
 
 Security-filter responses do not necessarily use controller-advice JSON. Driver/Ride have catch-all handlers and lack Payment's dedicated HttpMessageNotReadableException handler; malformed or missing JSON should not be assumed to produce the same 400 schema across every service. Payment status transitions are not a 409 case.
 
-## 26. Troubleshooting
+## Git Workflow
+
+```text
+feature branch -> Pull Request -> peer review -> develop
+               -> integration testing -> develop-to-main final PR -> main
+```
+
+Use feature branches and meaningful commits; do not perform day-to-day development directly on main. Review API/security changes with the team before integration. develop is the integration branch and main holds the final stable version.
+
+The root .gitignore excludes Maven target directories, common IDE files, .env files, application-local.properties, logs and OS metadata. Ignore rules do not remove sensitive content already tracked in Git.
+
+## GitHub Actions CI
+
+The workflow is [RideLink CI](.github/workflows/ci.yml). It runs on pushes to main/develop and pull requests targeting main/develop, with `contents: read` permission.
+
+| Job ID | Display name | Working directory |
+| --- | --- | --- |
+| `account-service` | Account Service | `account-service` |
+| `driver-service` | Driver & Vehicle Service | `driver-vehicle-service` |
+| `ride-service` | Ride Management Service | `ride-service` |
+| `payment-service` | Fare & Payment Service | `fare-payment-service` |
+
+Each independent job uses ubuntu-latest, a mongo:7 service mapped to port 27017, checkout@v4, setup-java@v4 with Temurin 17 and Maven caching, `chmod +x mvnw`, and `./mvnw -B clean test`.
+
+Jobs set a localhost test MONGODB_URI, a test-only JWT_SECRET, and JWT_ISSUER=ridelink-account. The test key is not reproduced here and must not be used as a deployment secret. Driver/Ride/Payment Spring test contexts additionally override JWT and MongoDB properties with generated keys and localhost test settings.
+
+The pipeline tests projects independently; it does not launch all four applications and execute the Postman workflow. A current all-green main run must be verified in GitHub Actions. Workflow YAML and local merge history do not contain proof of a particular hosted run's outcome.
+
+## Security Best Practices
+
+Never commit JWT secrets, database passwords, internal keys or tokens. Supply private values through environment configuration and keep them out of screenshots and Postman exports. Rotate any credentials previously exposed in files or Git history; current source cleanup does not prove rotation or remove historical copies.
+
+Use strong shared key material, HTTPS outside a local demonstration, appropriately restricted database permissions, and fresh tokens. Stateless JWT authentication and existing role checks are implemented, but the current project has material limits: public ADMIN registration, no immediate token revocation on suspension, limited ownership enforcement, and unrestricted authenticated Payment status changes. Do not present it as a hardened production payment system.
+
+## Known Limitations
+
+| Area | Verified current limitation |
+| --- | --- |
+| Account | Public registration accepts ADMIN. Status changes prevent subsequent inactive-account login but do not revoke existing JWTs. Its inbound filter lacks the resource servers' explicit issuer/required-claim validators. The internal key has a development fallback; configure a private value. |
+| Driver | Submitted accountId is not checked against Account or bound to the caller. DRIVER/ADMIN users are not restricted to their own profile. Duplicate prevention is an application lookup, not proof of concurrency safety. Coordinates lack geographic bounds. |
+| Ride | All supported roles can use every route; passenger/driver ownership is not enforced. Assignment selects/checks available drivers without reservation or availability synchronization. There is no nearest-driver matching. |
+| Ride validation | Null/omitted distance passes `@Positive` and can produce 500; supply numeric distanceKm. |
+| Ride integration | Fare REST failures can use a local fallback. Completion may be saved without paymentId if payment creation fails; there is no automatic retry/reconciliation or distributed transaction. |
+| Payment | Any supported role can read all payments and change statuses. Passenger/ride/amount relationships are not verified; duplicate payments are not prevented. Any recognized status can replace any prior state. |
+| Payment receipts/money | Receipts exist for every status; legacy references can be null. Payments/estimates use Double; separate calculation uses BigDecimal. No currency field, payment-method enum or real gateway exists. |
+| Error disclosure | Payment's generic 500 handler includes exception text in response details. |
+| Platform | Backend only; no frontend, live GPS/maps, route-distance provider, asynchronous event bus or measured scaling evidence. |
+| Evidence | Placeholder folders are not screenshots/exports. A fresh green CI run, successful Postman workflow and live persistence must be collected separately. |
+
+Ride's current MongoDB URI is environment-based; the earlier checked-in-credential configuration limitation has been corrected in current source. This README does not reproduce private configuration or claim that source removal alone proves historical credential rotation.
+
+## Troubleshooting
 
 ### A. JWT_SECRET missing
 
-For `Could not resolve placeholder 'JWT_SECRET'` or `JWT_SECRET must be configured`, load JWT_SECRET in the terminal/IDE environment that launches the service. A persistent User variable does not update an existing process. Use the presence-only checks in section 11.
+For `Could not resolve placeholder 'JWT_SECRET'` or `JWT_SECRET must be configured`, load JWT_SECRET in the terminal/IDE environment that launches the service. A persistent User variable does not update an existing process. Use the presence-only checks in [Environment variables](#environment-variables).
 
 ### B. BUILD SUCCESS but the service did not start
 
@@ -984,7 +1131,7 @@ Replace ACTUAL_PID with the numeric PID you verified. `<PID>` is also a placehol
 
 ### F. MongoDB connection errors
 
-Check MONGODB_URI, the effective SPRING_MONGODB_URI override, the per-service database property, Atlas network access, DB-user permissions, DNS/network access and credential validity. Never paste the connection string into logs or screenshots. Account and Payment require MONGODB_URI; Driver can use its local default. For Ride, merely setting MONGODB_URI does not replace its checked-in URI; apply the explicit SPRING_MONGODB_URI override.
+Check MONGODB_URI, the effective SPRING_MONGODB_URI override, the per-service database property, Atlas network access, DB-user permissions, DNS/network access and credential validity. Never paste the connection string into logs or screenshots. Account, Ride and Payment require MONGODB_URI; Driver can use its local default. Check for an intentional SPRING_MONGODB_URI override if the effective URI differs.
 
 ### G. Required request body missing
 
@@ -1006,18 +1153,12 @@ Run commands from your actual cloned repository directory. Replace any PATH_TO o
 
 Check Payment startup, Mongo connectivity, matching JWT settings and Ride logs. The service deliberately preserves completion on payment failure, but no reconciliation endpoint/job repairs the link automatically. Repeating completion is rejected; use a fresh ride for a clean demonstration after fixing the dependency.
 
-## 27. Security best practices
-
-Never commit JWT secrets, database passwords, internal keys or tokens. Supply private values through environment configuration and keep them out of screenshots and Postman exports. Rotate credentials already exposed in tracked files and coordinate history cleanup separately; this README update does not remove them.
-
-Use strong shared key material, HTTPS outside a local demonstration, appropriately restricted database permissions, and fresh tokens. Stateless JWT authentication and existing role checks are implemented, but the current project has material limits: public ADMIN registration, no immediate token revocation on suspension, limited ownership enforcement, and unrestricted authenticated Payment status changes. Do not present it as a hardened production payment system.
-
-## 28. Final project verification checklist
+## Final Verification Checklist
 
 - [ ] main branch pulled
 - [ ] Environment variables configured in every launch process
-- [ ] Account/Payment MONGODB_URI configured; Driver Mongo configuration verified
-- [ ] Ride SPRING_MONGODB_URI override configured
+- [ ] Account/Ride/Payment MONGODB_URI configured; Driver Mongo configuration verified
+- [ ] Any intentional SPRING_MONGODB_URI override verified
 - [ ] Account tests pass
 - [ ] Driver tests pass
 - [ ] Ride tests pass
@@ -1047,27 +1188,43 @@ Use strong shared key material, HTTPS outside a local demonstration, appropriate
 
 These are verification tasks, not assertions that a live demonstration has already passed.
 
-## 29. Contribution / team
+## Release / Assessed Version
 
-| Member | Primary service |
-| --- | --- |
-| Member 1 | Account Service |
-| Member 2 | Driver & Vehicle Service |
-| Member 3 | Ride Management Service |
-| Member 4 | Fare & Payment Service |
+The existing assessed release tag is **`v1.0.0-final`**. It is preserved unchanged. Inspect it without moving or recreating it:
 
-These neutral labels describe service ownership without inventing student identities. Each member owns a primary service; the group is jointly responsible for contracts, integration, review, testing, documentation and the final demonstration. Use actual Git/PR/test evidence when presenting contributions.
+```powershell
+git show --no-patch v1.0.0-final
+git rev-parse 'v1.0.0-final^{commit}'
+```
 
-## 30. Project status
+This finalized team/documentation update is on `docs/final-readme-team-details`, based on current main, and is newer than the assessed tag. Do not claim that this updated README or later main fixes are present in the tagged commit. The tag identifies the assessed snapshot; current main and this documentation branch may contain subsequent changes.
 
-The final main source integrates all four services, shared Account-issued JWT authentication, Ride-to-Driver/Payment JWT forwarding, separate MongoDB persistence, and the ride/payment/receipt workflow. GitHub Actions is configured for all four projects. All four services include Swagger/OpenAPI support; Payment uses springdoc 3.1.1 and environment-based Mongo configuration. The supplied Postman collection/environment provide the complete workflow and negative scenarios. The application has no frontend.
+## Team Contribution Summary
 
-The following repository facts remain relevant to assessment:
+### Bandara D M R M - IT24102090
 
-- Ride connection configuration still contains a private value and requires a safe local override; owners must handle rotation separately. Payment now reads MONGODB_URI and uses ridelink_payment_db.
-- Swagger/OpenAPI and Postman exports are present. The docs/architecture, docs/sequence-diagrams and docs/screenshots directories remain placeholders; runtime evidence still needs to be collected.
-- Account uses a different inbound JWT filter and does not apply the same explicit required-claim/issuer validation as the other services.
-- Ride does not update/reserve Driver availability; missing distance can cause 500; completion may succeed without payment.
-- Payment status updates have no transition guard or duplicate-payment prevention, and receipts are available for PENDING/FAILED as well as SUCCESS.
-- Historical service documentation is not fully current: Ride's README shows a Mongo placeholder absent from its properties, JWT_INTEGRATION.md mentions an Account secret fallback that has been removed, and JWT-SETUP.md describes Account JWT as not yet on main although it is now present.
-- The local merge history supports final integration, but a current green hosted CI run, live Atlas persistence, and an end-to-end Postman result require fresh runtime evidence. They are not inferred from source inspection.
+**Primary service: Account Service (8081).** Ownership covers registration/login, identity/profile/status APIs, BCrypt password handling, JWT issuance, internal lookup, plus the service's validation, tests and documentation.
+
+### Gammapila J P - IT24101325
+
+**Primary service: Driver & Vehicle Service (8082).** Ownership covers account-linked profiles, licence/embedded vehicle fields, availability, simulated location, service-area filtering and Driver authorization, plus the service's validation, tests and documentation.
+
+### Ranathunga M A D S - IT24102079
+
+**Primary service: Ride Management Service (8083).** Ownership covers ride requests/identifiers, assignment, lifecycle/cancellation, histories, REST clients and JWT forwarding, plus the service's validation, tests and documentation.
+
+### Disanayaka K G G S - IT24102031
+
+**Primary service: Fare & Payment Service (8084).** Ownership covers fare estimation/calculation, simulated payments, statuses, references, lookup/history, receipts and JWT validation, plus the service's validation, tests and documentation.
+
+### Shared Group Responsibilities
+
+The group jointly owns architecture, API contracts, integration, JWT integration, testing, Postman, Swagger/OpenAPI, Git workflow, peer review, CI, documentation and the final demonstration. These subsections describe primary-service responsibility, not independently verified authorship of every feature. Use actual repository history and review/test evidence when attributing individual work.
+
+## Project Status
+
+The repository contains exactly four integrated core microservices with separate MongoDB persistence, Account-issued JWTs, Ride-to-Driver/Payment synchronous calls and a simulated ride/payment/receipt workflow. All services declare Swagger/OpenAPI support. Postman exports cover APIs, workflow and negative scenarios, and GitHub Actions configures four test jobs.
+
+Current configuration uses environment-based MongoDB URIs, including Ride. Remaining implementation limits are consolidated in [Known limitations](#known-limitations). Historical service documents may differ from current source; root setup/API instructions follow the checked-in implementation.
+
+Source inspection verifies configuration and code paths, not a live deployment. CI results, Atlas writes and end-to-end runtime evidence require fresh verification. The assessed tag and newer README branch are distinguished in [Release / assessed version](#release--assessed-version).
