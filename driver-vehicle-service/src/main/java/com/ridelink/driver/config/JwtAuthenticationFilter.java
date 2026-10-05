@@ -15,12 +15,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+// Intercepts incoming HTTP requests once to validate JWT bearer tokens and populate the security context
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    // Helper service to decode and validate JWT tokens
     private final JwtService jwtService;
 
+    // Filters incoming requests, extracts bearer tokens, and sets authentication in the SecurityContext
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                      @NonNull HttpServletResponse response,

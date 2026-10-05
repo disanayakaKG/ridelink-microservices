@@ -10,13 +10,16 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.http.HttpMethod;
 
+// Spring Security configuration defining stateless session policy, endpoint access rules, and JWT filter
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    // Custom JWT filter to validate authorization tokens on each request
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    // Configures HTTP security, disables CSRF, sets stateless sessions, and defines route authorization rules
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http

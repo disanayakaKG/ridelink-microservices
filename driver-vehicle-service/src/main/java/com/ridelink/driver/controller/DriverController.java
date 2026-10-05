@@ -18,14 +18,17 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+// REST controller exposing HTTP endpoints for driver management, status updates, and location tracking
 @RestController
 @RequestMapping("/api/drivers")
 @RequiredArgsConstructor
 @Tag(name = "Driver & Vehicle", description = "Driver profile, availability, location and eligible-driver lookup")
 public class DriverController {
 
+    // Driver business logic service dependency
     private final DriverService driverService;
 
+    // Registers a new driver and vehicle profile linked to an existing user account
     @Operation(summary = "Register a driver profile",
             description = "Creates a driver profile linked to an existing account. Fails if a profile already exists for the account.")
     @ApiResponses({
@@ -39,6 +42,7 @@ public class DriverController {
         return ResponseEntity.status(HttpStatus.CREATED).body(driver);
     }
 
+    // Retrieves a single driver profile using its internal database ID
     @Operation(summary = "Get driver by ID", description = "Retrieves a single driver profile by its internal ID.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Driver found"),
@@ -49,6 +53,7 @@ public class DriverController {
         return ResponseEntity.ok(driverService.getById(id));
     }
 
+    // Retrieves a driver profile using the linked account ID from the auth service
     @Operation(summary = "Get driver by account ID", description = "Retrieves a driver profile using the linked Account Service account ID.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Driver found"),
@@ -59,6 +64,7 @@ public class DriverController {
         return ResponseEntity.ok(driverService.getByAccountId(accountId));
     }
 
+    // Updates a driver's operational status (AVAILABLE, UNAVAILABLE, or ON_TRIP)
     @Operation(summary = "Update driver availability",
             description = "Sets a driver's status to AVAILABLE, UNAVAILABLE, or ON_TRIP.")
     @ApiResponses({
@@ -72,6 +78,7 @@ public class DriverController {
         return ResponseEntity.ok(driverService.updateAvailability(id, status));
     }
 
+    // Updates a driver's current geographic coordinates
     @Operation(summary = "Update driver's simulated location",
             description = "Sets the driver's current latitude and longitude.")
     @ApiResponses({
@@ -86,6 +93,7 @@ public class DriverController {
         return ResponseEntity.ok(driverService.updateLocation(id, request));
     }
 
+    // Retrieves available drivers for ride matching, optionally filtered by service region
     @Operation(summary = "List eligible available drivers",
             description = "Returns drivers currently AVAILABLE, optionally filtered by service area. Used by the Ride Service to find a driver for assignment.")
     @ApiResponses({
