@@ -7,6 +7,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Provides account role/status lookup for service consumers. The internal route is permitted by
+ * the security chain, so this controller checks the X-Internal-Key header.
+ */
 @RestController
 @RequestMapping("/api/v1/internal/accounts")
 public class InternalAccountController {

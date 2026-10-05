@@ -13,12 +13,21 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.List;
 
+/**
+ * Manages driver profiles and their vehicle, location and availability data.
+ *
+ * SOLID - Dependency Inversion Principle: the injected DriverRepository abstraction separates
+ * business operations from MongoDB access.
+ */
 @Service
 @RequiredArgsConstructor
 public class DriverService {
 
     private final DriverRepository driverRepository;
 
+    /**
+     * Rejects an existing profile for the account and persists a new profile as UNAVAILABLE.
+     */
     public Driver registerProfile(DriverProfileRequest request) {
         driverRepository.findByAccountId(request.getAccountId())
                 .ifPresent(existing -> {
@@ -50,6 +59,9 @@ public class DriverService {
                 .orElseThrow(() -> new DriverNotFoundException("Driver not found: " + id));
     }
 
+    /**
+     * Persists the requested availability and refreshes the update timestamp.
+     */
     public Driver updateAvailability(String driverId, DriverStatus newStatus) {
         Driver driver = getById(driverId);
         driver.setStatus(newStatus);
@@ -57,6 +69,9 @@ public class DriverService {
         return driverRepository.save(driver);
     }
 
+    /**
+     * Persists supplied coordinates and refreshes the update timestamp.
+     */
     public Driver updateLocation(String driverId, LocationUpdateRequest request) {
         Driver driver = getById(driverId);
         driver.setCurrentLatitude(request.getLatitude());
@@ -65,6 +80,10 @@ public class DriverService {
         return driverRepository.save(driver);
     }
 
+    /**
+     * Returns AVAILABLE drivers, filtering by service area only when a nonblank area is
+     * supplied.
+     */
     public List<Driver> getEligibleAvailableDrivers(String serviceArea) {
         if (serviceArea == null || serviceArea.isBlank()) {
             return driverRepository.findByStatus(DriverStatus.AVAILABLE);

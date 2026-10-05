@@ -6,6 +6,10 @@ import io.swagger.v3.oas.models.info.Info;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Supplies service API documentation metadata; runtime authentication and business rules remain
+ * in their respective layers.
+ */
 @Configuration
 public class OpenApiConfig {
 

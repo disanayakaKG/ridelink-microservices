@@ -11,6 +11,12 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Centralizes exception-to-HTTP error translation, including request validation failures.
+ *
+ * SOLID - Single Responsibility Principle: shared error-response logic stays outside
+ * controllers while preserving existing response schemas and status codes.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

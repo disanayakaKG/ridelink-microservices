@@ -9,6 +9,10 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
+/**
+ * MongoDB driver profile linking an accountId to license, vehicle, service-area, availability
+ * and current-location information.
+ */
 @Data
 @Builder
 @NoArgsConstructor

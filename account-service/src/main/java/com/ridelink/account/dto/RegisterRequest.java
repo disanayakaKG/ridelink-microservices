@@ -5,6 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Registration payload requiring a valid email, nonblank name, password length of 8 to 72
+ * characters and a PASSENGER, DRIVER or ADMIN role.
+ */
 public class RegisterRequest {
 
     @NotBlank

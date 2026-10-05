@@ -2,6 +2,10 @@ package com.ridelink.account.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+/**
+ * Binds JWT signing, lifetime and issuer settings without embedding credential values in source
+ * code.
+ */
 @ConfigurationProperties(prefix = "jwt")
 public class JwtProperties {
 

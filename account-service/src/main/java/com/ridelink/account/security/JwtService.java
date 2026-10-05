@@ -11,6 +11,10 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
+/**
+ * Issues signed account JWTs containing subject, role and email claims. Parsing verifies the
+ * signature and token time constraints; it does not require a particular issuer.
+ */
 @Service
 public class JwtService {
 
@@ -20,6 +24,9 @@ public class JwtService {
         this.props = props;
     }
 
+    /**
+     * Signs account identity claims with the configured issuer and expiration.
+     */
     public String createToken(User user) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + props.getExpirationMs());
@@ -34,6 +41,9 @@ public class JwtService {
                 .compact();
     }
 
+    /**
+     * Verifies signed claims and token time constraints without an issuer-equality requirement.
+     */
     public Claims parse(String token) {
         return Jwts.parser()
                 .verifyWith(key())

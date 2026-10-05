@@ -3,6 +3,10 @@ package com.ridelink.account.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
+/**
+ * Validated status-change payload limited to ACTIVE, SUSPENDED or DEACTIVATED; AccountService
+ * enforces the administrator requirement.
+ */
 public class UpdateStatusRequest {
 
     @NotBlank

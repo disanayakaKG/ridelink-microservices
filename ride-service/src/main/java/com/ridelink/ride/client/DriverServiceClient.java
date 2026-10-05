@@ -16,9 +16,9 @@ import com.ridelink.ride.exception.ExternalServiceException;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Synchronous REST client for the Driver & Vehicle Service.
- * Expected endpoint (documented contract):
- *   GET /api/drivers/available  → list of available drivers with id field.
+ * Synchronous REST adapter for Driver & Vehicle Service available-driver lookup. Injected
+ * RestClient configuration supplies JWT forwarding; transport failures become
+ * ExternalServiceException.
  */
 @Slf4j
 @Component
@@ -33,9 +33,8 @@ public class DriverServiceClient {
 	}
 
 	/**
-	 * Returns driver IDs that are currently AVAILABLE.
-	 * If the remote service is unreachable or returns an unexpected shape,
-	 * an empty list is returned so the caller can surface a NoAvailableDriverException.
+	 * Returns available driver IDs, accepting driverId or id response fields. Empty responses
+	 * produce an empty list; REST failures raise ExternalServiceException.
 	 */
 	@SuppressWarnings("unchecked")
 	public List<String> getAvailableDriverIds() {

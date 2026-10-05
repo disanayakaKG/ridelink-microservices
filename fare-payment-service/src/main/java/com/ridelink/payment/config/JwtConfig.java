@@ -16,6 +16,11 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Set;
 
+/**
+ * Configures signature verification compatible with Account Service HMAC key selection.
+ * Validates issuer, timestamps with zero clock skew, expiration presence, a nonblank subject
+ * and a supported role claim.
+ */
 @Configuration
 public class JwtConfig {
     @Bean

@@ -3,6 +3,10 @@ package com.ridelink.account.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * Login payload requiring a nonblank valid email and a nonblank password; credential and
+ * active-status checks belong to AccountService.
+ */
 public class LoginRequest {
 
     @NotBlank

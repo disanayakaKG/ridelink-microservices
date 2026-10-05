@@ -10,6 +10,11 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
+/**
+ * Configures stateless JWT authentication and maps role claims to ROLE_ authorities.
+ * Documentation, actuator and error routes are public; remaining routes require authentication
+ * without additional role restrictions in this chain.
+ */
 @Configuration
 public class SecurityConfig {
 

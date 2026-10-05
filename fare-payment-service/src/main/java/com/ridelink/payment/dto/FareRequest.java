@@ -6,6 +6,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Fare-estimation payload requiring distance of at least 0.1 kilometres.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

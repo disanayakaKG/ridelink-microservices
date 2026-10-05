@@ -6,6 +6,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
+/**
+ * MongoDB account document containing profile data, a password hash, role and account status.
+ */
 @Document(collection = "users")
 public class User {
 
