@@ -27,6 +27,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
+        // These routes are public and should not require a bearer token.
         String path = request.getServletPath();
         return path.startsWith("/api/v1/auth")
                 || path.startsWith("/swagger-ui")
@@ -53,6 +54,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 );
                 SecurityContextHolder.getContext().setAuthentication(auth);
             } catch (JwtException | IllegalArgumentException ignored) {
+                // Leave invalid-token requests unauthenticated; protected routes are rejected later.
                 SecurityContextHolder.clearContext();
             }
         }

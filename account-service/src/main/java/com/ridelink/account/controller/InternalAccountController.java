@@ -27,6 +27,7 @@ public class InternalAccountController {
             @RequestHeader(value = "X-Internal-Key", required = false) String key,
             @PathVariable String userId
     ) {
+        // Service-to-service access uses a shared key instead of an end-user JWT.
         if (key == null || !key.equals(internalKey)) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid internal key");
         }

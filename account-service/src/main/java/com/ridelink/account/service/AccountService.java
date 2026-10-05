@@ -30,6 +30,7 @@ public class AccountService {
     }
 
     public AuthResponse register(RegisterRequest req) {
+        // Normalize before checking uniqueness so email matching is case-insensitive.
         String email = req.getEmail().trim().toLowerCase();
         if (users.existsByEmail(email)) {
             throw new ApiException(HttpStatus.CONFLICT, "Email already registered");
@@ -37,6 +38,7 @@ public class AccountService {
 
         User user = new User();
         user.setEmail(email);
+    // Persist only the encoded password, never the submitted credential.
         user.setPasswordHash(encoder.encode(req.getPassword()));
         user.setFullName(req.getFullName().trim());
         user.setPhone(req.getPhone());
@@ -51,12 +53,14 @@ public class AccountService {
     }
 
     public AuthResponse login(LoginRequest req) {
+        // Use the same failure response for an unknown email and an incorrect password.
         User user = users.findByEmail(req.getEmail().trim().toLowerCase())
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
 
         if (!encoder.matches(req.getPassword(), user.getPasswordHash())) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
+        // Inactive accounts cannot receive a fresh authentication token.
         if (!"ACTIVE".equals(user.getStatus())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Account is " + user.getStatus());
         }
@@ -73,6 +77,7 @@ public class AccountService {
 
     public AccountResponse updateMe(String userId, UpdateProfileRequest req) {
         User user = find(userId);
+        // Treat omitted fields, and blank names, as unchanged rather than overwriting saved data.
         if (req.getFullName() != null && !req.getFullName().isBlank()) {
             user.setFullName(req.getFullName().trim());
         }
@@ -85,6 +90,7 @@ public class AccountService {
     }
 
     public AccountResponse getByIdForCaller(String callerId, String callerRole, String targetId) {
+        // A caller may read another account only when acting as an administrator.
         if (!targetId.equals(callerId) && !"ADMIN".equals(callerRole)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to view this account");
         }
@@ -92,6 +98,7 @@ public class AccountService {
     }
 
     public AccountResponse updateStatus(String callerRole, String targetId, String status) {
+        // Account status changes are restricted to administrators.
         if (!"ADMIN".equals(callerRole)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Admin only");
         }
@@ -104,6 +111,7 @@ public class AccountService {
 
     public InternalAccountResponse getInternal(String userId) {
         User user = find(userId);
+        // Expose only the account fields other services need for authorization checks.
         return new InternalAccountResponse(
                 user.getId(),
                 user.getRole(),

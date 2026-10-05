@@ -33,6 +33,7 @@ public class SecurityConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
+        // Authentication is established from JWT claims by JwtAuthFilter, not a user lookup.
         return username -> {
             throw new UsernameNotFoundException("JWT only");
         };
@@ -49,6 +50,7 @@ public class SecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        // Internal endpoints perform their own shared-key check.
                         .requestMatchers("/api/v1/internal/**").permitAll()
                         .requestMatchers(
                                 "/swagger-ui/**",

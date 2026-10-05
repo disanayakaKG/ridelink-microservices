@@ -23,6 +23,7 @@ public class JwtService {
     public String createToken(User user) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + props.getExpirationMs());
+        // Downstream services use these signed claims to identify the caller and their role.
         return Jwts.builder()
                 .subject(user.getId())
                 .claim("role", user.getRole())
@@ -35,6 +36,7 @@ public class JwtService {
     }
 
     public Claims parse(String token) {
+        // Parsing verifies the signature and token validity before claims are trusted.
         return Jwts.parser()
                 .verifyWith(key())
                 .build()

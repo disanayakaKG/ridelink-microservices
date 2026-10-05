@@ -42,6 +42,7 @@ public class AccountController {
     }
 
     private String role(Authentication auth) {
+        // Spring prefixes role authorities; AccountService compares the unprefixed role name.
         return auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .filter(a -> a.startsWith("ROLE_"))
