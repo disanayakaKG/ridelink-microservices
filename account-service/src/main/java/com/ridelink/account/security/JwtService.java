@@ -52,6 +52,7 @@ public class JwtService {
     }
 
     private SecretKey key() {
+        // Preserve the account-service key format expected by the other services' JWT verifiers.
         byte[] bytes = props.getSecret().getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {
             bytes = java.util.Arrays.copyOf(bytes, 32);

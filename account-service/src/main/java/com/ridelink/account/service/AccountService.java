@@ -52,6 +52,7 @@ public class AccountService {
 
     public AuthResponse login(LoginRequest req) {
         User user = users.findByEmail(req.getEmail().trim().toLowerCase())
+            // Keep missing-user and wrong-password responses identical to avoid account enumeration.
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
 
         if (!encoder.matches(req.getPassword(), user.getPasswordHash())) {
@@ -85,6 +86,7 @@ public class AccountService {
     }
 
     public AccountResponse getByIdForCaller(String callerId, String callerRole, String targetId) {
+        // Users may read their own account; only administrators may read another user's account.
         if (!targetId.equals(callerId) && !"ADMIN".equals(callerRole)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to view this account");
         }
@@ -92,6 +94,7 @@ public class AccountService {
     }
 
     public AccountResponse updateStatus(String callerRole, String targetId, String status) {
+        // Account status changes are administrative operations, not self-service profile updates.
         if (!"ADMIN".equals(callerRole)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Admin only");
         }
