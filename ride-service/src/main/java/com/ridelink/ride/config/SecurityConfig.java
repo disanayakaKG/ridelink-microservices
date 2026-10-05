@@ -18,11 +18,14 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
+	// Configures HTTP security rules, permitting Swagger and API endpoints for development and testing.
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http
+				// Disable CSRF and configure stateless session policy for REST microservices
 				.csrf(csrf -> csrf.disable())
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				// Configure request authorization rules
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(
 								"/swagger-ui/**",

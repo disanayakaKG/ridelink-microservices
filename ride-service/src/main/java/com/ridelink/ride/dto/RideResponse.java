@@ -10,23 +10,31 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+// Data transfer object representing the complete state and details of a ride.
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class RideResponse {
 
+	// Database and business identifiers for ride, passenger, and driver
 	private String id;
 	private String rideId;
 	private String passengerId;
 	private String driverId;
+
+	// Route locations and distance
 	private String pickupLocation;
 	private String destinationLocation;
 	private Double distanceKm;
+
+	// Lifecycle state, fare amounts, and payment reference
 	private RideStatus status;
 	private Double estimatedFare;
 	private Double finalFare;
 	private String paymentId;
+
+	// Lifecycle event timestamps and cancellation details
 	private Instant createdAt;
 	private Instant updatedAt;
 	private Instant assignedAt;
@@ -36,6 +44,7 @@ public class RideResponse {
 	private Instant cancelledAt;
 	private String cancellationReason;
 
+	// Converts a Ride entity from the database into an API response DTO.
 	public static RideResponse from(Ride ride) {
 		return RideResponse.builder()
 				.id(ride.getId())

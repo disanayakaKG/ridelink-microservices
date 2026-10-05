@@ -7,8 +7,10 @@ import com.ridelink.ride.dto.CancelRideRequest;
 import com.ridelink.ride.dto.CreateRideRequest;
 import com.ridelink.ride.dto.RideResponse;
 
+// Service contract defining operations for booking, managing, and tracking rides.
 public interface RideService {
 
+	// Ride booking and retrieval operations
 	RideResponse createRide(CreateRideRequest request);
 
 	RideResponse getByRideId(String rideId);
@@ -19,6 +21,7 @@ public interface RideService {
 
 	List<RideResponse> getByDriverId(String driverId);
 
+	// Ride lifecycle state transition operations
 	RideResponse assignDriver(String rideId, AssignDriverRequest request);
 
 	RideResponse acceptRide(String rideId);

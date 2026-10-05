@@ -37,9 +37,11 @@ import com.ridelink.ride.model.RideStatus;
 import com.ridelink.ride.repository.RideRepository;
 import com.ridelink.ride.service.impl.RideServiceImpl;
 
+// Unit tests for RideServiceImpl verifying business logic, lifecycle transitions, and external service interactions.
 @ExtendWith(MockitoExtension.class)
 class RideServiceImplTest {
 
+	// Mocked repositories and external microservice clients
 	@Mock
 	private RideRepository rideRepository;
 
@@ -54,6 +56,7 @@ class RideServiceImplTest {
 
 	private Ride requestedRide;
 
+	// Initializes sample test data before each test execution
 	@BeforeEach
 	void setUp() {
 		requestedRide = Ride.builder()
@@ -70,6 +73,7 @@ class RideServiceImplTest {
 				.build();
 	}
 
+	// Tests successful ride creation with fare estimation and saving to repository
 	@Test
 	void createRide_success() {
 		CreateRideRequest request = CreateRideRequest.builder()
@@ -96,6 +100,7 @@ class RideServiceImplTest {
 		verify(rideRepository).save(any(Ride.class));
 	}
 
+	// Tests exception thrown when searching for a non-existent ride ID
 	@Test
 	void getByRideId_notFound() {
 		when(rideRepository.findByRideId("MISSING")).thenReturn(Optional.empty());
@@ -105,6 +110,7 @@ class RideServiceImplTest {
 				.hasMessageContaining("MISSING");
 	}
 
+	// Tests auto-selecting the first available driver when no explicit driver is requested
 	@Test
 	void assignDriver_autoSelect_success() {
 		when(rideRepository.findByRideId("RIDE001")).thenReturn(Optional.of(requestedRide));
@@ -118,6 +124,7 @@ class RideServiceImplTest {
 		assertThat(response.getAssignedAt()).isNotNull();
 	}
 
+	// Tests failure when attempting to assign a driver but no active drivers are available
 	@Test
 	void assignDriver_noAvailableDriver() {
 		when(rideRepository.findByRideId("RIDE001")).thenReturn(Optional.of(requestedRide));
@@ -127,6 +134,7 @@ class RideServiceImplTest {
 				.isInstanceOf(NoAvailableDriverException.class);
 	}
 
+	// Tests failure when assigning a driver to a ride not in REQUESTED status
 	@Test
 	void assignDriver_invalidStatus() {
 		requestedRide.setStatus(RideStatus.COMPLETED);
@@ -137,6 +145,7 @@ class RideServiceImplTest {
 				.hasMessageContaining("COMPLETED");
 	}
 
+	// Tests successful ride acceptance by an assigned driver
 	@Test
 	void acceptRide_success() {
 		requestedRide.setStatus(RideStatus.ASSIGNED);
@@ -150,6 +159,7 @@ class RideServiceImplTest {
 		assertThat(response.getAcceptedAt()).isNotNull();
 	}
 
+	// Tests successful journey start transitioning ride to IN_PROGRESS status
 	@Test
 	void startRide_success() {
 		requestedRide.setStatus(RideStatus.ACCEPTED);
@@ -163,6 +173,7 @@ class RideServiceImplTest {
 		assertThat(response.getStartedAt()).isNotNull();
 	}
 
+	// Tests completing a ride, calculating final fare, and creating payment record
 	@Test
 	void completeRide_success() {
 		requestedRide.setStatus(RideStatus.IN_PROGRESS);
@@ -181,6 +192,7 @@ class RideServiceImplTest {
 		assertThat(response.getCompletedAt()).isNotNull();
 	}
 
+	// Tests successful ride cancellation from REQUESTED status
 	@Test
 	void cancelRide_fromRequested_success() {
 		when(rideRepository.findByRideId("RIDE001")).thenReturn(Optional.of(requestedRide));
@@ -194,6 +206,7 @@ class RideServiceImplTest {
 		assertThat(response.getCancelledAt()).isNotNull();
 	}
 
+	// Tests failure when attempting to cancel a ride that is already COMPLETED
 	@Test
 	void cancelRide_fromCompleted_fails() {
 		requestedRide.setStatus(RideStatus.COMPLETED);
@@ -207,6 +220,7 @@ class RideServiceImplTest {
 		verify(rideRepository, never()).save(any());
 	}
 
+	// Tests assigning a specific requested driver after verifying driver availability
 	@Test
 	void assignDriver_explicitDriver_success() {
 		when(rideRepository.findByRideId("RIDE001")).thenReturn(Optional.of(requestedRide));

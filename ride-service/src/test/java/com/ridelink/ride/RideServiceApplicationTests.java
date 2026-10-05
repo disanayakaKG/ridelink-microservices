@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
+// Integration test verifying that the Spring application context starts up correctly.
 @SpringBootTest
 @TestPropertySource(properties = {
 		"spring.mongodb.uri=mongodb://localhost:27017",
@@ -13,6 +14,7 @@ import org.springframework.test.context.TestPropertySource;
 })
 class RideServiceApplicationTests {
 
+	// Asserts that the Spring application context loads without errors.
 	@Test
 	void contextLoads() {
 	}

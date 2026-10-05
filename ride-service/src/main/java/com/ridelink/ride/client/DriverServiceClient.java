@@ -16,16 +16,17 @@ import com.ridelink.ride.exception.ExternalServiceException;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Synchronous REST client for the Driver & Vehicle Service.
- * Expected endpoint (documented contract):
- *   GET /api/drivers/available  → list of available drivers with id field.
+ * Synchronous REST client for interacting with the Driver & Vehicle Service.
+ * Fetches currently available drivers and verifies individual driver availability.
  */
 @Slf4j
 @Component
 public class DriverServiceClient {
 
+	// HTTP client configured with the Driver Service base URL
 	private final RestClient restClient;
 
+	// Initializes the RestClient using the driver-service base URL from application configuration.
 	public DriverServiceClient(@Value("${app.driver-service.base-url}") String baseUrl) {
 		this.restClient = RestClient.builder()
 				.baseUrl(baseUrl)
@@ -40,6 +41,7 @@ public class DriverServiceClient {
 	@SuppressWarnings("unchecked")
 	public List<String> getAvailableDriverIds() {
 		try {
+			// Call the Driver Service endpoint to fetch active drivers
 			List<Map<String, Object>> body = restClient.get()
 					.uri("/api/drivers/available")
 					.accept(MediaType.APPLICATION_JSON)
@@ -50,6 +52,7 @@ public class DriverServiceClient {
 				return Collections.emptyList();
 			}
 
+			// Extract driver IDs from response payloads (supports both driverId and id fields)
 			return body.stream()
 					.map(m -> {
 						Object id = m.get("driverId");
@@ -61,15 +64,14 @@ public class DriverServiceClient {
 					.filter(id -> id != null && !id.isBlank())
 					.toList();
 		} catch (RestClientException ex) {
+			// Wrap and rethrow external communication errors
 			log.warn("Driver service call failed: {}", ex.getMessage());
 			throw new ExternalServiceException(
 					"Unable to retrieve available drivers from Driver Service: " + ex.getMessage(), ex);
 		}
 	}
 
-	/**
-	 * Verifies a specific driver is available. Returns true if present in available list.
-	 */
+	// Checks if a specific driver ID is currently present in the available drivers list.
 	public boolean isDriverAvailable(String driverId) {
 		List<String> available = getAvailableDriverIds();
 		return available.contains(driverId);

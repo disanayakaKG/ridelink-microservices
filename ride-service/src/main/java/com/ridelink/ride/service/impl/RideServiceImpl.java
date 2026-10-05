@@ -25,25 +25,31 @@ import com.ridelink.ride.service.RideService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+// Service implementation managing ride bookings, status lifecycle transitions, and external service coordination.
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class RideServiceImpl implements RideService {
 
+	// Set of statuses from which a ride is eligible for cancellation
 	private static final Set<RideStatus> CANCELLABLE = EnumSet.of(
 			RideStatus.REQUESTED, RideStatus.ASSIGNED, RideStatus.ACCEPTED);
 
+	// Repository and inter-service REST clients
 	private final RideRepository rideRepository;
 	private final DriverServiceClient driverServiceClient;
 	private final PaymentServiceClient paymentServiceClient;
 
+	// Creates a new ride booking, requests initial fare estimate, and stores the ride in REQUESTED state.
 	@Override
 	public RideResponse createRide(CreateRideRequest request) {
 		Instant now = Instant.now();
 		String rideId = generateRideId();
 
+		// Calculate fare estimate based on trip distance
 		double estimatedFare = paymentServiceClient.estimateFare(request.getDistanceKm());
 
+		// Assemble initial ride record
 		Ride ride = Ride.builder()
 				.rideId(rideId)
 				.passengerId(request.getPassengerId())
@@ -56,16 +62,19 @@ public class RideServiceImpl implements RideService {
 				.updatedAt(now)
 				.build();
 
+		// Persist new ride to database
 		Ride saved = rideRepository.save(ride);
 		log.info("Created ride {} for passenger {}", rideId, request.getPassengerId());
 		return RideResponse.from(saved);
 	}
 
+	// Retrieves a ride by its business identifier (e.g., RIDE001).
 	@Override
 	public RideResponse getByRideId(String rideId) {
 		return RideResponse.from(findByRideIdOrThrow(rideId));
 	}
 
+	// Retrieves a ride by its MongoDB document ObjectId.
 	@Override
 	public RideResponse getByMongoId(String id) {
 		Ride ride = rideRepository.findById(id)
@@ -73,6 +82,7 @@ public class RideServiceImpl implements RideService {
 		return RideResponse.from(ride);
 	}
 
+	// Retrieves all rides booked by a specific passenger.
 	@Override
 	public List<RideResponse> getByPassengerId(String passengerId) {
 		return rideRepository.findByPassengerId(passengerId).stream()
@@ -80,6 +90,7 @@ public class RideServiceImpl implements RideService {
 				.toList();
 	}
 
+	// Retrieves all rides assigned to a specific driver.
 	@Override
 	public List<RideResponse> getByDriverId(String driverId) {
 		return rideRepository.findByDriverId(driverId).stream()
@@ -87,20 +98,22 @@ public class RideServiceImpl implements RideService {
 				.toList();
 	}
 
+	// Matches and assigns an available driver to a REQUESTED ride.
 	@Override
 	public RideResponse assignDriver(String rideId, AssignDriverRequest request) {
+		// Ensure ride exists and is in REQUESTED state
 		Ride ride = findByRideIdOrThrow(rideId);
 		assertStatus(ride, RideStatus.REQUESTED, "assign a driver");
 
 		String driverId = request != null ? request.getDriverId() : null;
 
+		// Select driver: auto-pick first available or verify explicitly requested driver
 		if (driverId == null || driverId.isBlank()) {
 			List<String> available = driverServiceClient.getAvailableDriverIds();
 			if (available.isEmpty()) {
 				throw new NoAvailableDriverException(
 						"No available drivers found for ride " + rideId);
 			}
-			// Simple documented approach: pick the first eligible available driver
 			driverId = available.get(0);
 			log.info("Auto-selected driver {} for ride {}", driverId, rideId);
 		} else {
@@ -110,6 +123,7 @@ public class RideServiceImpl implements RideService {
 			}
 		}
 
+		// Update ride entity with driver assignment details and timestamp
 		Instant now = Instant.now();
 		ride.setDriverId(driverId);
 		ride.setStatus(RideStatus.ASSIGNED);
@@ -121,11 +135,13 @@ public class RideServiceImpl implements RideService {
 		return RideResponse.from(saved);
 	}
 
+	// Transitions an ASSIGNED ride to ACCEPTED status upon driver confirmation.
 	@Override
 	public RideResponse acceptRide(String rideId) {
 		Ride ride = findByRideIdOrThrow(rideId);
 		assertStatus(ride, RideStatus.ASSIGNED, "accept");
 
+		// Record driver acceptance and update timestamp
 		Instant now = Instant.now();
 		ride.setStatus(RideStatus.ACCEPTED);
 		ride.setAcceptedAt(now);
@@ -134,11 +150,13 @@ public class RideServiceImpl implements RideService {
 		return RideResponse.from(rideRepository.save(ride));
 	}
 
+	// Transitions an ACCEPTED ride to IN_PROGRESS when the trip starts.
 	@Override
 	public RideResponse startRide(String rideId) {
 		Ride ride = findByRideIdOrThrow(rideId);
 		assertStatus(ride, RideStatus.ACCEPTED, "start");
 
+		// Update status to IN_PROGRESS and record trip start time
 		Instant now = Instant.now();
 		ride.setStatus(RideStatus.IN_PROGRESS);
 		ride.setStartedAt(now);
@@ -147,26 +165,26 @@ public class RideServiceImpl implements RideService {
 		return RideResponse.from(rideRepository.save(ride));
 	}
 
+	// Completes an active ride, calculates final fare, and triggers payment creation.
 	@Override
 	public RideResponse completeRide(String rideId) {
 		Ride ride = findByRideIdOrThrow(rideId);
 		assertStatus(ride, RideStatus.IN_PROGRESS, "complete");
 
+		// Calculate final fare based on trip distance and update ride status
 		Instant now = Instant.now();
-		// Final fare uses the same documented rule as estimate
 		double finalFare = paymentServiceClient.estimateFare(ride.getDistanceKm());
 		ride.setFinalFare(finalFare);
 		ride.setStatus(RideStatus.COMPLETED);
 		ride.setCompletedAt(now);
 		ride.setUpdatedAt(now);
 
+		// Trigger payment transaction with Payment Service (resilient if payment service is down)
 		try {
 			String paymentId = paymentServiceClient.createPayment(
 					ride.getRideId(), ride.getPassengerId(), finalFare);
 			ride.setPaymentId(paymentId);
 		} catch (Exception ex) {
-			// Persist completion even if payment service is temporarily down;
-			// paymentId can be reconciled later.
 			log.warn("Payment creation failed for ride {}: {}", rideId, ex.getMessage());
 		}
 
@@ -175,16 +193,19 @@ public class RideServiceImpl implements RideService {
 		return RideResponse.from(saved);
 	}
 
+	// Cancels a ride if it is currently in REQUESTED, ASSIGNED, or ACCEPTED state.
 	@Override
 	public RideResponse cancelRide(String rideId, CancelRideRequest request) {
 		Ride ride = findByRideIdOrThrow(rideId);
 
+		// Verify ride is in a state where cancellation is permitted
 		if (!CANCELLABLE.contains(ride.getStatus())) {
 			throw new InvalidRideStateException(
 					"Cannot cancel ride " + rideId + " from status " + ride.getStatus()
 							+ ". Cancellation is only allowed from REQUESTED, ASSIGNED or ACCEPTED.");
 		}
 
+		// Update ride record with cancellation details
 		Instant now = Instant.now();
 		ride.setStatus(RideStatus.CANCELLED);
 		ride.setCancelledAt(now);
@@ -194,13 +215,15 @@ public class RideServiceImpl implements RideService {
 		return RideResponse.from(rideRepository.save(ride));
 	}
 
-	// ── helpers ──────────────────────────────────────────────────────────────
+	// ── Helper methods ─────────────────────────────────────────────────────────
 
+	// Fetches a ride by its business ID or throws ResourceNotFoundException
 	private Ride findByRideIdOrThrow(String rideId) {
 		return rideRepository.findByRideId(rideId)
 				.orElseThrow(() -> new ResourceNotFoundException("Ride not found: " + rideId));
 	}
 
+	// Validates that the ride is in the expected status before executing a lifecycle transition
 	private void assertStatus(Ride ride, RideStatus expected, String action) {
 		if (ride.getStatus() != expected) {
 			throw new InvalidRideStateException(
@@ -210,6 +233,7 @@ public class RideServiceImpl implements RideService {
 		}
 	}
 
+	// Generates a unique business ride ID with format RIDE + 8 uppercase alphanumeric characters
 	private String generateRideId() {
 		String candidate;
 		do {

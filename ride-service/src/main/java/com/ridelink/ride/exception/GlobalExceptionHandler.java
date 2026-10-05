@@ -13,14 +13,17 @@ import org.springframework.web.context.request.WebRequest;
 
 import com.ridelink.ride.dto.ErrorResponse;
 
+// Centralized exception handler mapping domain and system exceptions to standardized HTTP responses.
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+	// Handles missing entities (e.g., ride not found), returning HTTP 404.
 	@ExceptionHandler(ResourceNotFoundException.class)
 	public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex, WebRequest request) {
 		return build(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
 	}
 
+	// Handles invalid status transitions and driver availability conflicts, returning HTTP 409.
 	@ExceptionHandler(InvalidRideStateException.class)
 	public ResponseEntity<ErrorResponse> handleInvalidState(InvalidRideStateException ex, WebRequest request) {
 		return build(HttpStatus.CONFLICT, ex.getMessage(), request, null);
@@ -31,11 +34,13 @@ public class GlobalExceptionHandler {
 		return build(HttpStatus.CONFLICT, ex.getMessage(), request, null);
 	}
 
+	// Handles failures during remote microservice communication, returning HTTP 502.
 	@ExceptionHandler(ExternalServiceException.class)
 	public ResponseEntity<ErrorResponse> handleExternal(ExternalServiceException ex, WebRequest request) {
 		return build(HttpStatus.BAD_GATEWAY, ex.getMessage(), request, null);
 	}
 
+	// Handles bean validation failures (@Valid annotations), extracting field-specific errors into HTTP 400.
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, WebRequest request) {
 		List<String> details = ex.getBindingResult().getFieldErrors().stream()
@@ -44,16 +49,19 @@ public class GlobalExceptionHandler {
 		return build(HttpStatus.BAD_REQUEST, "Validation failed", request, details);
 	}
 
+	// Handles illegal arguments and invalid method inputs, returning HTTP 400.
 	@ExceptionHandler(IllegalArgumentException.class)
 	public ResponseEntity<ErrorResponse> handleIllegalArg(IllegalArgumentException ex, WebRequest request) {
 		return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, null);
 	}
 
+	// Catch-all fallback handler for uncaught exceptions, returning HTTP 500.
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, WebRequest request) {
 		return build(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", request, null);
 	}
 
+	// Helper method to assemble the standardized ErrorResponse payload.
 	private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, WebRequest request,
 			List<String> details) {
 		ErrorResponse body = ErrorResponse.builder()

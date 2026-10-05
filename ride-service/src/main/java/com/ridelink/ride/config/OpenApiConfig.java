@@ -7,9 +7,11 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 
+// Configuration for OpenAPI 3.0 / Swagger documentation.
 @Configuration
 public class OpenApiConfig {
 
+	// Defines general API metadata including title, description, version, and contact details.
 	@Bean
 	OpenAPI rideServiceOpenAPI() {
 		return new OpenAPI()
