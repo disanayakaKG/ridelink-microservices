@@ -1,5 +1,9 @@
 package com.ridelink.account.dto;
 
+/**
+ * Partial profile update payload; the service ignores blank names and only updates a phone
+ * value when supplied.
+ */
 public class UpdateProfileRequest {
 
     private String fullName;

@@ -16,6 +16,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Authenticates Bearer tokens through JwtService and maps the role claim to a ROLE_ authority.
+ * Invalid tokens clear the security context; the security chain decides whether the request
+ * requires authentication.
+ */
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 

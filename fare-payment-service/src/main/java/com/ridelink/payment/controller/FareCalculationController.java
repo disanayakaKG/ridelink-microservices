@@ -10,6 +10,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Accepts validated decimal-distance requests and delegates calculation to
+ * FareCalculationService.
+ *
+ * SOLID - Single Responsibility Principle: HTTP concerns remain in this controller; business
+ * operations are delegated to the service layer.
+ *
+ * SOLID - Dependency Inversion Principle: constructor injection supplies the service interface
+ * rather than constructing an implementation.
+ */
 @RestController
 @RequestMapping("/api/payments/fare")
 public class FareCalculationController {

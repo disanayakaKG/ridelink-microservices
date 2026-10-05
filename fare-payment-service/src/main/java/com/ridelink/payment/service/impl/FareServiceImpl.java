@@ -5,6 +5,12 @@ import org.springframework.stereotype.Service;
 import com.ridelink.payment.dto.FareResponse;
 import com.ridelink.payment.service.FareService;
 
+/**
+ * Calculates fare = 150 + (distanceKm * 80).
+ *
+ * SOLID - Single Responsibility Principle: fare calculation is isolated from payment
+ * persistence and status management.
+ */
 @Service
 public class FareServiceImpl implements FareService {
 

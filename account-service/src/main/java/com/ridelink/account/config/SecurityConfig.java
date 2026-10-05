@@ -16,6 +16,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Configures stateless JWT authentication and BCrypt password encoding. Authentication,
+ * internal lookup, API documentation and actuator routes are public at the filter-chain level;
+ * account routes require authentication.
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {

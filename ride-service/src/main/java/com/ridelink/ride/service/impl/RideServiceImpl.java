@@ -25,6 +25,14 @@ import com.ridelink.ride.service.RideService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Coordinates ride persistence, lifecycle validation and synchronous driver/payment
+ * interactions.
+ *
+ * SOLID - Dependency Inversion Principle: constructor injection supplies the repository
+ * abstraction and external-service clients; HTTP infrastructure is configured outside the
+ * controller.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -37,6 +45,10 @@ public class RideServiceImpl implements RideService {
 	private final DriverServiceClient driverServiceClient;
 	private final PaymentServiceClient paymentServiceClient;
 
+	/**
+	 * Estimates fare synchronously and persists a REQUESTED ride with a collision-checked business
+	 * identifier.
+	 */
 	@Override
 	public RideResponse createRide(CreateRideRequest request) {
 		Instant now = Instant.now();
@@ -61,11 +73,17 @@ public class RideServiceImpl implements RideService {
 		return RideResponse.from(saved);
 	}
 
+	/**
+	 * Looks up a ride by its stable business identifier.
+	 */
 	@Override
 	public RideResponse getByRideId(String rideId) {
 		return RideResponse.from(findByRideIdOrThrow(rideId));
 	}
 
+	/**
+	 * Looks up a ride by its MongoDB document identifier.
+	 */
 	@Override
 	public RideResponse getByMongoId(String id) {
 		Ride ride = rideRepository.findById(id)
@@ -73,6 +91,9 @@ public class RideServiceImpl implements RideService {
 		return RideResponse.from(ride);
 	}
 
+	/**
+	 * Returns stored ride history for the supplied passenger identifier.
+	 */
 	@Override
 	public List<RideResponse> getByPassengerId(String passengerId) {
 		return rideRepository.findByPassengerId(passengerId).stream()
@@ -80,6 +101,9 @@ public class RideServiceImpl implements RideService {
 				.toList();
 	}
 
+	/**
+	 * Returns stored ride history for the supplied driver identifier.
+	 */
 	@Override
 	public List<RideResponse> getByDriverId(String driverId) {
 		return rideRepository.findByDriverId(driverId).stream()
@@ -87,6 +111,10 @@ public class RideServiceImpl implements RideService {
 				.toList();
 	}
 
+	/**
+	 * Requires REQUESTED state; validates an explicit available driver or selects the first
+	 * available driver, then moves to ASSIGNED.
+	 */
 	@Override
 	public RideResponse assignDriver(String rideId, AssignDriverRequest request) {
 		Ride ride = findByRideIdOrThrow(rideId);
@@ -121,6 +149,9 @@ public class RideServiceImpl implements RideService {
 		return RideResponse.from(saved);
 	}
 
+	/**
+	 * Requires ASSIGNED state before moving to ACCEPTED; invalid transitions are rejected.
+	 */
 	@Override
 	public RideResponse acceptRide(String rideId) {
 		Ride ride = findByRideIdOrThrow(rideId);
@@ -134,6 +165,9 @@ public class RideServiceImpl implements RideService {
 		return RideResponse.from(rideRepository.save(ride));
 	}
 
+	/**
+	 * Requires ACCEPTED state before moving to IN_PROGRESS; invalid transitions are rejected.
+	 */
 	@Override
 	public RideResponse startRide(String rideId) {
 		Ride ride = findByRideIdOrThrow(rideId);
@@ -147,6 +181,10 @@ public class RideServiceImpl implements RideService {
 		return RideResponse.from(rideRepository.save(ride));
 	}
 
+	/**
+	 * Requires IN_PROGRESS state, obtains final fare and moves to COMPLETED. Payment-creation
+	 * exceptions are logged and completion is still persisted without a payment link.
+	 */
 	@Override
 	public RideResponse completeRide(String rideId) {
 		Ride ride = findByRideIdOrThrow(rideId);
@@ -175,6 +213,10 @@ public class RideServiceImpl implements RideService {
 		return RideResponse.from(saved);
 	}
 
+	/**
+	 * Allows cancellation only from REQUESTED, ASSIGNED or ACCEPTED and records the supplied
+	 * reason.
+	 */
 	@Override
 	public RideResponse cancelRide(String rideId, CancelRideRequest request) {
 		Ride ride = findByRideIdOrThrow(rideId);

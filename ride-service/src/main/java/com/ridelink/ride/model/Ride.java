@@ -11,6 +11,11 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * MongoDB ride document recording participants, fare information and lifecycle timestamps. The
+ * rideId is the stable business identifier shared across services, distinct from the MongoDB
+ * id.
+ */
 @Data
 @Builder
 @NoArgsConstructor

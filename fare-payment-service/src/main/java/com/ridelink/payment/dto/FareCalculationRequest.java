@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+/**
+ * Decimal fare-calculation payload requiring distance of at least 0.01 kilometres.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

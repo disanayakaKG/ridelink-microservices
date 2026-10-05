@@ -11,6 +11,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.Instant;
 import java.util.stream.Collectors;
 
+/**
+ * Centralizes exception-to-HTTP error translation, including request validation failures.
+ *
+ * SOLID - Single Responsibility Principle: shared error-response logic stays outside
+ * controllers while preserving existing response schemas and status codes.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

@@ -9,6 +9,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Exposes account profile and status operations using the authenticated account identity.
+ *
+ * SOLID - Single Responsibility Principle: HTTP concerns remain in this controller; business
+ * operations are delegated to the service layer.
+ */
 @RestController
 @RequestMapping("/api/v1/accounts")
 public class AccountController {

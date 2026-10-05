@@ -7,6 +7,10 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 
+/**
+ * Supplies service API documentation metadata; runtime authentication and business rules remain
+ * in their respective layers.
+ */
 @Configuration
 public class OpenApiConfig {
 

@@ -7,6 +7,13 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 
+/**
+ * Calculates fare = 150 + (distanceKm * 80) using BigDecimal and rejects missing or nonpositive
+ * distance.
+ *
+ * SOLID - Single Responsibility Principle: decimal fare calculation is isolated from payment
+ * persistence and status management.
+ */
 @Service
 public class FareCalculationServiceImpl implements FareCalculationService {
 

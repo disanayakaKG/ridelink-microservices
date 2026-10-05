@@ -6,6 +6,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.client.RestClient;
 
+/**
+ * Configures synchronous REST clients for Driver and Payment communication. Each call resolves
+ * the authenticated JWT from the security context and forwards its Bearer token so downstream
+ * services perform their own security checks.
+ */
 @Configuration
 public class RestClientConfig {
     @Bean

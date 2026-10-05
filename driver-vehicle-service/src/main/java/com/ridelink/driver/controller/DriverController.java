@@ -18,6 +18,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * REST entry point for driver profiles, vehicle details, availability, location and available-
+ * driver lookup.
+ *
+ * SOLID - Single Responsibility Principle: HTTP concerns remain in this controller; business
+ * operations are delegated to the service layer.
+ */
 @RestController
 @RequestMapping("/api/drivers")
 @RequiredArgsConstructor

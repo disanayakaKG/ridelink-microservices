@@ -6,6 +6,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Cancellation payload requiring a nonblank reason; the service separately validates whether
+ * the current state permits cancellation.
+ */
 @Data
 @Builder
 @NoArgsConstructor

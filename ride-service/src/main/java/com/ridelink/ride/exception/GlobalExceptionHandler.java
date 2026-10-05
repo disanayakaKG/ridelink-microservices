@@ -13,6 +13,12 @@ import org.springframework.web.context.request.WebRequest;
 
 import com.ridelink.ride.dto.ErrorResponse;
 
+/**
+ * Centralizes exception-to-HTTP error translation, including request validation failures.
+ *
+ * SOLID - Single Responsibility Principle: shared error-response logic stays outside
+ * controllers while preserving existing response schemas and status codes.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

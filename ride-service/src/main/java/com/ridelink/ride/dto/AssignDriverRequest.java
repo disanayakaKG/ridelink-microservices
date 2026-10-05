@@ -6,6 +6,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Optional explicit driver selection; an omitted or blank driverId requests selection of the
+ * first available driver.
+ */
 @Data
 @Builder
 @NoArgsConstructor

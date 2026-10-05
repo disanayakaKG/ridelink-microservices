@@ -6,6 +6,10 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * Receipt projection of stored payment details, including transaction reference and current
+ * status; receipt generation does not process a payment.
+ */
 @Data
 @Builder
 public class PaymentReceiptResponse {

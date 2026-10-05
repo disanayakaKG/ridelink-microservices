@@ -22,6 +22,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Exposes ride requests, assignment, lifecycle transitions and history through HTTP endpoints.
+ *
+ * SOLID - Single Responsibility Principle: HTTP concerns remain in this controller; business
+ * operations are delegated to the service layer.
+ *
+ * SOLID - Dependency Inversion Principle: constructor injection supplies the service interface
+ * rather than constructing an implementation.
+ */
 @RestController
 @RequestMapping("/api/rides")
 @RequiredArgsConstructor

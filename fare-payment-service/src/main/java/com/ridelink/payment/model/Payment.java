@@ -5,6 +5,11 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 
+/**
+ * MongoDB simulated-payment document linking a ride and passenger to an amount, method and
+ * status. The generated transactionReference identifies the payment record; it is not proof of
+ * external gateway settlement.
+ */
 @Data
 @Builder
 @NoArgsConstructor

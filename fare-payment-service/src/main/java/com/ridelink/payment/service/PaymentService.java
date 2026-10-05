@@ -6,6 +6,12 @@ import com.ridelink.payment.model.Payment;
 import com.ridelink.payment.model.PaymentStatus;
 import java.util.List;
 
+/**
+ * Focused contract for payment persistence, lookup, history, status and receipts.
+ *
+ * SOLID - Interface Segregation Principle: payment consumers do not depend on fare-calculation
+ * operations.
+ */
 public interface PaymentService {
     Payment createPayment(PaymentRequest request);
     List<Payment> getAllPayments();

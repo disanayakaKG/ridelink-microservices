@@ -7,6 +7,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Ride creation payload requiring passenger and location text. A supplied distance must be
+ * positive; @Positive alone does not require a nonnull value.
+ */
 @Data
 @Builder
 @NoArgsConstructor

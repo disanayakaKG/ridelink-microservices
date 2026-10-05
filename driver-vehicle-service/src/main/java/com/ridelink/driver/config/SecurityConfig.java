@@ -11,6 +11,11 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
+/**
+ * Configures stateless JWT security and maps the role claim to ROLE_ authorities. API
+ * documentation is public, available-driver lookup requires authentication, and driver
+ * create/read/update routes require DRIVER or ADMIN.
+ */
 @Configuration
 public class SecurityConfig {
 

@@ -16,6 +16,12 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 
+/**
+ * Coordinates registration, authentication and account profile/status rules.
+ *
+ * SOLID - Dependency Inversion Principle: persistence and password operations use injected
+ * UserRepository and PasswordEncoder abstractions.
+ */
 @Service
 public class AccountService {
 
@@ -29,6 +35,10 @@ public class AccountService {
         this.jwt = jwt;
     }
 
+    /**
+     * Normalizes email, rejects duplicates, hashes the password and creates an ACTIVE account
+     * before issuing its JWT.
+     */
     public AuthResponse register(RegisterRequest req) {
         String email = req.getEmail().trim().toLowerCase();
         if (users.existsByEmail(email)) {
@@ -50,6 +60,9 @@ public class AccountService {
         return toAuth(user);
     }
 
+    /**
+     * Checks the password hash and rejects non-ACTIVE accounts before issuing a JWT.
+     */
     public AuthResponse login(LoginRequest req) {
         User user = users.findByEmail(req.getEmail().trim().toLowerCase())
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
@@ -71,6 +84,9 @@ public class AccountService {
         return getById(userId);
     }
 
+    /**
+     * Applies supplied profile changes without changing role, status or password.
+     */
     public AccountResponse updateMe(String userId, UpdateProfileRequest req) {
         User user = find(userId);
         if (req.getFullName() != null && !req.getFullName().isBlank()) {
@@ -84,6 +100,9 @@ public class AccountService {
         return toAccount(user);
     }
 
+    /**
+     * Allows account lookup by its owner or an ADMIN caller.
+     */
     public AccountResponse getByIdForCaller(String callerId, String callerRole, String targetId) {
         if (!targetId.equals(callerId) && !"ADMIN".equals(callerRole)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to view this account");
@@ -91,6 +110,9 @@ public class AccountService {
         return getById(targetId);
     }
 
+    /**
+     * Requires an ADMIN caller before persisting the requested account status.
+     */
     public AccountResponse updateStatus(String callerRole, String targetId, String status) {
         if (!"ADMIN".equals(callerRole)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Admin only");
@@ -102,6 +124,9 @@ public class AccountService {
         return toAccount(user);
     }
 
+    /**
+     * Returns role/status metadata and derives active from the ACTIVE status.
+     */
     public InternalAccountResponse getInternal(String userId) {
         User user = find(userId);
         return new InternalAccountResponse(

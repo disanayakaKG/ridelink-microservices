@@ -13,11 +13,9 @@ import com.ridelink.ride.exception.ExternalServiceException;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Synchronous REST client for the Fare & Payment Service.
- *
- * Contracts used:
- *   POST /api/fares/estimate  { distanceKm } → { estimatedFare, ... }
- *   POST /api/payments        { rideId, passengerId, amount, paymentMethod } → payment record with id
+ * Synchronous REST adapter for fare estimation and simulated payment creation. Injected
+ * RestClient configuration supplies JWT forwarding; fare transport failures use the local 150 +
+ * (distanceKm * 80) fallback.
  */
 @Slf4j
 @Component
@@ -31,6 +29,10 @@ public class PaymentServiceClient {
 				.build();
 	}
 
+	/**
+	 * Requests a fare estimate synchronously; REST transport failures fall back to 150 +
+	 * (distanceKm * 80), while a missing estimate field raises ExternalServiceException.
+	 */
 	public double estimateFare(double distanceKm) {
 		try {
 			Map<String, Object> request = Map.of("distanceKm", distanceKm);
@@ -55,7 +57,8 @@ public class PaymentServiceClient {
 	}
 
 	/**
-	 * Creates a simulated payment. Returns the payment document id, or null on failure.
+	 * Creates a simulated CARD payment. Missing response identifiers return null; REST failures
+	 * raise ExternalServiceException.
 	 */
 	@SuppressWarnings("unchecked")
 	public String createPayment(String rideId, String passengerId, double amount) {
